@@ -97,7 +97,7 @@ function showRestartBanner() {
   const el = document.createElement('div');
   el.id = 'restartBanner';
   el.className = 'restart-banner';
-  el.innerHTML = '⚠️ Code đã được cập nhật nhưng server vẫn chạy bản cũ. Hãy tắt <code>start.cmd</code> rồi mở lại, sau đó tải lại trang.';
+  el.innerHTML = 'Code đã được cập nhật nhưng server vẫn chạy bản cũ. Hãy tắt <code>start.cmd</code> rồi mở lại, sau đó tải lại trang.';
   document.body.prepend(el);
 }
 
@@ -152,7 +152,7 @@ function avatarHtml(a, style = '') {
 
 function addSystem(text, level = 'info') {
   const ico = level === 'success' ? ICONS.checkCircle : level === 'warn' ? ICONS.alert : level === 'error' ? ICONS.alert : ICONS.info;
-  append(h(`<div class="sys ${level}"><span class="sys-ico">${ico}</span><span class="sys-txt">${inlineMd(text)}</span></div>`));
+  append(h(`<div class="sys sys-${level} ${level}"><span class="sys-ico">${ico}</span><span class="sys-txt">${inlineMd(text)}</span></div>`));
 }
 
 function addStage(evt) {
@@ -385,7 +385,7 @@ function cliRowHtml(r) {
   const status = r.installing
     ? '⏳ Đang cài...'
     : r.found
-      ? r.found.works ? `✅ ${esc(r.found.version)}` : '⚠️ Tìm thấy nhưng không chạy được'
+      ? r.found.works ? `${esc(r.found.version)}` : 'Tìm thấy nhưng không chạy được'
       : '❌ Chưa có';
   const where = r.found
     ? `<div class="muted small">${esc(r.found.source)} · <code>${esc(r.found.path)}</code></div>`

@@ -1002,19 +1002,42 @@ pre.plain {
   text-align: center;
   font-size: 12.5px;
   color: var(--muted);
-  max-width: 680px;
+  max-width: 90%;
   display: inline-flex;
+  flex-direction: row;
   align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
+  justify-content: center;
+  gap: 8px;
+  padding: 5px 14px;
   border-radius: var(--radius-full);
   background: var(--panel-2);
   border: 1px solid var(--border);
+  line-height: 1.45;
+  white-space: nowrap;
 }
 
-.sys.success { color: var(--ok); border-color: var(--ok-border); background: var(--ok-bg); }
-.sys.warn { color: var(--warn); border-color: var(--warn-border); background: var(--warn-bg); }
-.sys.error { color: var(--err); border-color: var(--err-border); background: var(--err-bg); }
+.sys-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sys-ico svg {
+  width: 13px;
+  height: 13px;
+}
+
+.sys-txt {
+  display: inline;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sys.success, .sys.sys-success { color: var(--ok); border-color: var(--ok-border); background: var(--ok-bg); }
+.sys.warn, .sys.sys-warn { color: var(--warn); border-color: var(--warn-border); background: var(--warn-bg); }
+.sys.error, .sys.sys-error { color: var(--err); border-color: var(--err-border); background: var(--err-bg); }
 .sys code { background: rgba(0, 0, 0, 0.06); padding: 1px 4px; border-radius: 4px; }
 
 .stage-div {
@@ -1638,7 +1661,7 @@ pre.plain {
 }
 
 /* Info List */
-.info {
+#info, dl.info {
   margin: 0;
   display: flex;
   flex-direction: column;

@@ -159,7 +159,7 @@ export function runAgent({ agentCfg, mode, prompt, promptFile, cwd, outFile, tim
       try {
         parse(obj, acc);
       } catch (e) {
-        acc.activity(`⚠️ không đọc được 1 dòng output: ${e.message}`);
+        acc.activity(`không đọc được 1 dòng output: ${e.message}`);
       }
     };
     child.stdout.setEncoding('utf8');

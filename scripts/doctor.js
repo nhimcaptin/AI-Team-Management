@@ -7,7 +7,7 @@ import { findCommand, execCli, INSTALLERS, installCommandText, runInstaller } fr
 import { CLI_DATA, dirSize, fmtSize } from './common.js';
 
 const INSTALL_MISSING = process.argv.includes('--install');
-const ok = (s) => console.log(`  ✅ ${s}`);
+const ok = (s) => console.log(`  ${s}`);
 const bad = (s) => console.log(`  ❌ ${s}`);
 const info = (s) => console.log(`     ${s}`);
 

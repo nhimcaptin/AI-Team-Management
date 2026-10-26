@@ -75,7 +75,7 @@ export class TaskRunner {
 
   setAuto(on) {
     this.setState({ autoMode: on });
-    this.system(on ? '⚡ Đã bật Auto: AI tự chạy, không chờ duyệt.' : '✋ Đã tắt Auto: sẽ chờ bạn duyệt trước khi code và merge.');
+    this.system(on ? ' Đã bật Auto: AI tự chạy, không chờ duyệt.' : '✋ Đã tắt Auto: sẽ chờ bạn duyệt trước khi code và merge.');
     if (on && this.pendingGate?.autoable) {
       this.resolveGate(this.pendingGate.gateId, this.pendingGate.options[0].id, '', 'auto');
     }
@@ -123,7 +123,7 @@ export class TaskRunner {
   async gate(kind, { title, body = '', options, auto = false }) {
     this.checkStop();
     if (auto && this.task.autoMode) {
-      this.system(`⚡ Auto: tự chọn "${options[0].label}" (${title})`);
+      this.system(` Auto: tự chọn "${options[0].label}" (${title})`);
       return { option: options[0].id, comment: '' };
     }
     const gateId = `${this.task.id}-g${this.seq + 1}`;
@@ -199,7 +199,7 @@ export class TaskRunner {
       throw new StopError();
     }
     if (meta.verdicts && !verdict) {
-      this.system(`⚠️ ${agentCfg.label} không trả về verdict hợp lệ, coi như chưa đồng ý.`, 'warn');
+      this.system(`${agentCfg.label} không trả về verdict hợp lệ, coi như chưa đồng ý.`, 'warn');
     }
     return { text: res.text, verdict };
   }
@@ -268,7 +268,7 @@ export class TaskRunner {
       const dir = path.relative(cwd, this.store.taskDir(this.task)).replaceAll('\\', '/');
       await git.commitHistory(cwd, dir, `ai-team: lưu lịch sử task "${this.task.title}"`);
     } catch (e) {
-      this.system(`⚠️ Không commit được lịch sử chat: ${e.message}`, 'warn');
+      this.system(`Không commit được lịch sử chat: ${e.message}`, 'warn');
     }
   }
 
@@ -292,7 +292,7 @@ export class TaskRunner {
           verdicts: ['AGREE', 'OBJECT'],
         });
         if (critique.verdict?.verdict === 'AGREE') {
-          this.system(`✅ ${analyst.label} và ${critic.label} đã đồng thuận kế hoạch.`, 'success');
+          this.system(`${analyst.label} và ${critic.label} đã đồng thuận kế hoạch.`, 'success');
           break;
         }
         if (round >= maxRounds) {
@@ -354,7 +354,7 @@ export class TaskRunner {
     const remote = this.task.branch && !this.task.merged && (await git.remoteBranch(cwd, this.task.branch));
     if (remote) {
       await git.switchTo(cwd, remote, { remote: true });
-      this.system(`🌿 Lấy branch \`${this.task.branch}\` từ \`${remote}\``);
+      this.system(`Lấy branch \`${this.task.branch}\` từ \`${remote}\``);
       return;
     }
     for (;;) {
@@ -371,7 +371,7 @@ export class TaskRunner {
     for (let n = 2; await git.branchExists(cwd, branch); n++) branch = `ai-team/${this.task.id}-${n}`;
     await git.checkout(cwd, branch, { create: true });
     this.setState({ baseBranch: base, branch });
-    this.system(`🌿 Tạo branch \`${branch}\` từ \`${base}\``);
+    this.system(`Tạo branch \`${branch}\` từ \`${base}\``);
   }
 
   // A tracker hides how changes are recorded: git branch + commits, or a
@@ -383,14 +383,14 @@ export class TaskRunner {
       collect: async (round) => {
         const now = await git.currentBranch(cwd);
         if (now !== this.task.branch) {
-          this.system(`⚠️ ${this.team.coder.label} đã chuyển sang branch \`${now}\`, quay lại \`${this.task.branch}\`.`, 'warn');
+          this.system(`${this.team.coder.label} đã chuyển sang branch \`${now}\`, quay lại \`${this.task.branch}\`.`, 'warn');
           await git.checkout(cwd, this.task.branch);
         }
         await git.commitAll(cwd, `ai-team: ${this.task.title} (round ${round})`);
         const diff = await git.diff(cwd, this.task.baseBranch, this.task.branch);
         const diffStat = await git.diffStat(cwd, this.task.baseBranch, this.task.branch);
         this.emit('diff', { stat: diffStat, diff: diff.slice(0, MAX_DIFF_EVENT), truncated: diff.length > MAX_DIFF_EVENT });
-        if (!diff.trim()) this.system(`⚠️ Chưa có thay đổi nào so với \`${this.task.baseBranch}\`.`, 'warn');
+        if (!diff.trim()) this.system(`Chưa có thay đổi nào so với \`${this.task.baseBranch}\`.`, 'warn');
         return { diff, diffStat, diffTitle: 'Diff (base...branch)', diffLang: 'diff' };
       },
     };
@@ -406,7 +406,7 @@ export class TaskRunner {
       collect: async () => {
         const changes = compareSnapshot(cwd, before);
         this.emit('changes', { files: changes });
-        if (!changes.length) this.system('⚠️ Chưa có file nào thay đổi.', 'warn');
+        if (!changes.length) this.system('Chưa có file nào thay đổi.', 'warn');
         return {
           changes,
           diff: changesContent(cwd, changes, this.config.maxDiffChars),
@@ -436,7 +436,7 @@ export class TaskRunner {
       const ra = await this.callAgent('analyst', 'review', P.review(ctx, 'analyst', reviewArgs), 'read', { round, verdicts });
       const rc = await this.callAgent('critic', 'review', P.review(ctx, 'critic', reviewArgs), 'read', { round, verdicts });
       if (ra.verdict?.verdict === 'APPROVE' && rc.verdict?.verdict === 'APPROVE') {
-        this.system('✅ Cả hai reviewer đã APPROVE.', 'success');
+        this.system('Cả hai reviewer đã APPROVE.', 'success');
         return collected;
       }
       reviewFeedback = [ra, rc]
@@ -481,7 +481,7 @@ export class TaskRunner {
       await git.commitAll(cwd, `ai-team: ${this.task.title} (dở dang)`);
       await git.checkout(cwd, baseBranch);
     } catch (e) {
-      this.system(`⚠️ Không quay về được \`${baseBranch}\`: ${e.message}`, 'warn');
+      this.system(`Không quay về được \`${baseBranch}\`: ${e.message}`, 'warn');
     }
   }
 
