@@ -234,19 +234,19 @@ export class TaskRunner {
         await this.codePhase(plan, this.gitTracker());
         await this.mergePhase();
       } else {
-        this.system('📁 Project không dùng git: AI sửa thẳng trong thư mục, không tạo branch và không có bước merge.');
+        this.system('Project không dùng git: AI sửa thẳng trong thư mục, không tạo branch và không có bước merge.');
         const changes = await this.codePhase(plan, this.snapshotTracker());
         this.reportNoGit(changes);
       }
-      this.stage('done', null, '🎉 Hoàn tất');
+      this.stage('done', null, ' Hoàn tất');
       this.setState({ status: 'done', finishedAt: Date.now() });
     } catch (e) {
       await this.restoreBase();
       if (e instanceof StopError || this.stopped) {
-        this.system('⏹️ Task đã dừng.', 'warn');
+        this.system('Task đã dừng.', 'warn');
         this.setState({ status: 'stopped', finishedAt: Date.now() });
       } else {
-        this.system(`❌ Lỗi: ${e.message}`, 'error');
+        this.system(`Lỗi: ${e.message}`, 'error');
         this.setState({ status: 'error', error: e.message, finishedAt: Date.now() });
       }
     }
@@ -264,7 +264,7 @@ export class TaskRunner {
       // never mix it into an AI branch that was not merged
       if (branch && !merged && current === branch) return;
       // written before the commit so the commit holds the whole history
-      this.system(`💾 Lưu lịch sử chat vào git (\`${current}\`). Push branch này để làm tiếp task trên máy khác.`);
+      this.system(`Lưu lịch sử chat vào git (\`${current}\`). Push branch này để làm tiếp task trên máy khác.`);
       const dir = path.relative(cwd, this.store.taskDir(this.task)).replaceAll('\\', '/');
       await git.commitHistory(cwd, dir, `ai-team: lưu lịch sử task "${this.task.title}"`);
     } catch (e) {
@@ -504,9 +504,9 @@ export class TaskRunner {
       try {
         await git.merge(cwd, baseBranch, branch, `Merge ${branch}: ${this.task.title}`);
         merged = true;
-        this.system(`🔀 Đã merge \`${branch}\` vào \`${baseBranch}\` (chưa push).`, 'success');
+        this.system(` Đã merge \`${branch}\` vào \`${baseBranch}\` (chưa push).`, 'success');
       } catch (e) {
-        this.system(`❌ Merge thất bại, branch vẫn giữ nguyên: ${e.message}`, 'error');
+        this.system(`Merge thất bại, branch vẫn giữ nguyên: ${e.message}`, 'error');
       }
     } else {
       await this.restoreBase();
