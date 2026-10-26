@@ -39,8 +39,12 @@ export async function ensureExclude(cwd) {
   }
 }
 
+// The tool writes its chat history into .ai-team/ while it runs. If a user committed
+// that folder, the exclude file no longer hides it, so leave it out explicitly.
+const SKIP_HISTORY = ['--', '.', ':(exclude).ai-team'];
+
 export async function statusShort(cwd) {
-  return (await git(cwd, ['status', '--porcelain'])).out;
+  return (await git(cwd, ['status', '--porcelain', ...SKIP_HISTORY])).out;
 }
 
 export async function currentBranch(cwd) {
@@ -56,12 +60,12 @@ export async function checkout(cwd, branch, { create = false } = {}) {
 }
 
 export async function commitAll(cwd, message) {
-  await git(cwd, ['add', '-A']);
+  await git(cwd, ['add', '-A', ...SKIP_HISTORY]);
   if (!(await statusShort(cwd))) return false;
-  const r = await git(cwd, ['commit', '-m', message], { allowFail: true });
+  const r = await git(cwd, ['commit', '-m', message, ...SKIP_HISTORY], { allowFail: true });
   if (!r.ok) {
     // machine without user.name/user.email configured
-    await git(cwd, ['-c', 'user.name=AI Team', '-c', 'user.email=ai-team@localhost', 'commit', '-m', message]);
+    await git(cwd, ['-c', 'user.name=AI Team', '-c', 'user.email=ai-team@localhost', 'commit', '-m', message, ...SKIP_HISTORY]);
   }
   return true;
 }
