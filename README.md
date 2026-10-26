@@ -67,7 +67,13 @@ Muốn thử giao diện mà chưa tốn quota thì chạy `npm run mock`. Ở c
 - Chỉnh số vòng phản biện, số lần sửa, Auto mặc định.
 - Lưu vào `ai-team.config.local.json`, nên mỗi máy có cài đặt riêng.
 
-Lịch sử chat và prompt của từng lượt gọi AI nằm trong `<project>/.ai-team/<task>/`. Thư mục này tự được thêm vào `.git/info/exclude`, nên không lẫn vào commit.
+Lịch sử chat và prompt của từng lượt gọi AI nằm trong `<project>/.ai-team/<task>/`. Thư mục này tự được thêm vào `.git/info/exclude`, nên không lẫn vào commit của AI.
+
+**🔁 Làm tiếp task trên máy khác:**
+1. Máy A: bật **Cài đặt → Commit lịch sử chat vào git**. Sau mỗi lượt chạy, tool commit `.ai-team/<task>/` vào branch đang đứng (thường là `main`), rồi bạn push branch đó.
+2. Máy B: pull project về (bằng tab Branch, hoặc `git pull` rồi bấm **Task mới → Nhập task có sẵn trong project này**). Task hiện trong danh sách kèm toàn bộ lịch sử, nhắn tin vào để chạy tiếp.
+- Mỗi lúc chỉ làm một task trên một máy, nếu không lịch sử sẽ bị conflict.
+- Branch AI chưa merge phải được push lên remote; máy B tự lấy nó về khi chạy tiếp.
 
 ## Cấu hình
 

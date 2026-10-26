@@ -698,6 +698,20 @@ $('#newTaskBtn').addEventListener('click', () => {
   dialog.showModal();
 });
 $('#cancelNew').addEventListener('click', () => dialog.close());
+$('#importTasks').addEventListener('click', async () => {
+  const f = $('#newTaskForm');
+  const err = $('#newTaskError');
+  err.textContent = '';
+  if (!f.projectPath.value.trim()) return (err.textContent = 'Nhập thư mục project trước.');
+  try {
+    const { added } = await api('/api/tasks/import', { projectPath: f.projectPath.value });
+    if (!added) return (err.textContent = 'Không có task mới nào trong .ai-team của project này (hãy pull code về trước).');
+    store('ai-team.lastProject', f.projectPath.value);
+    dialog.close();
+  } catch (e) {
+    err.textContent = e.message;
+  }
+});
 $('#newTaskForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = e.target;
@@ -1045,6 +1059,7 @@ $('#settingsBtn').addEventListener('click', async () => {
   f.maxDebateRounds.value = settings.maxDebateRounds;
   f.maxFixRounds.value = settings.maxFixRounds;
   f.autoModeDefault.checked = settings.autoModeDefault;
+  f.historyInGit.checked = settings.historyInGit;
   $('#settingsError').textContent = '';
   $('#sidebar').classList.remove('open');
   settingsDlg.showModal();
@@ -1301,6 +1316,7 @@ $('#settingsForm').addEventListener('submit', async (e) => {
       maxDebateRounds: f.maxDebateRounds.value,
       maxFixRounds: f.maxFixRounds.value,
       autoModeDefault: f.autoModeDefault.checked,
+      historyInGit: f.historyInGit.checked,
     });
     settingsDlg.close();
   } catch (err) {

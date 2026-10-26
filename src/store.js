@@ -62,6 +62,36 @@ export class Store {
     } catch {}
   }
 
+  // Adds tasks whose history is in <project>/.ai-team/ but which this machine's
+  // list does not know, e.g. history pulled from git after working on another
+  // machine. The project may live at a different path here.
+  importFrom(projectPath) {
+    let ids = [];
+    try {
+      ids = fs.readdirSync(path.join(projectPath, '.ai-team'));
+    } catch {
+      return [];
+    }
+    const added = [];
+    for (const id of ids) {
+      if (this.get(id)) continue;
+      let task;
+      try {
+        task = JSON.parse(fs.readFileSync(path.join(projectPath, '.ai-team', id, 'task.json'), 'utf8'));
+      } catch {
+        continue;
+      }
+      if (task?.id !== id) continue;
+      task.projectPath = projectPath;
+      // it was running on the other machine; nothing runs it here
+      if (['running', 'waiting', 'queued'].includes(task.status)) task.status = 'interrupted';
+      this.tasks.push(task);
+      added.push(task);
+    }
+    if (added.length) this.#writeIndex();
+    return added;
+  }
+
   appendEvent(task, evt) {
     const dir = this.taskDir(task);
     fs.mkdirSync(dir, { recursive: true });

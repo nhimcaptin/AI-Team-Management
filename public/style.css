@@ -1304,6 +1304,15 @@ pre.plain {
   border-color: var(--border);
 }
 
+/* "import tasks" sits under the project path field in the new task dialog */
+.btn.import-btn {
+  align-self: flex-start;
+  white-space: normal;
+  text-align: left;
+  font-weight: 500;
+  margin-top: -4px;
+}
+
 .btn:active:not(:disabled) {
   transform: scale(0.98);
 }

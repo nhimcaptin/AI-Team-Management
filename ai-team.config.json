@@ -10,6 +10,7 @@
   "maxDebateRounds": 3,
   "maxFixRounds": 2,
   "autoModeDefault": false,
+  "historyInGit": false,
   "timeoutMinutes": {
     "read": 15,
     "write": 40

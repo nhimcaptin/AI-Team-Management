@@ -60,14 +60,36 @@ export async function checkout(cwd, branch, { create = false } = {}) {
 }
 
 export async function commitAll(cwd, message) {
-  await git(cwd, ['add', '-A', ...SKIP_HISTORY]);
-  if (!(await statusShort(cwd))) return false;
-  const r = await git(cwd, ['commit', '-m', message, ...SKIP_HISTORY], { allowFail: true });
+  // `add` with an exclude pathspec fails when .ai-team/ is ignored, so stage
+  // everything and then take the history back out of the index
+  await git(cwd, ['add', '-A']);
+  await git(cwd, ['reset', '-q', '--', '.ai-team'], { allowFail: true });
+  if ((await git(cwd, ['diff', '--cached', '--quiet'], { allowFail: true })).ok) return false; // nothing staged
+  const r = await git(cwd, ['commit', '-m', message], { allowFail: true });
   if (!r.ok) {
     // machine without user.name/user.email configured
-    await git(cwd, ['-c', 'user.name=AI Team', '-c', 'user.email=ai-team@localhost', 'commit', '-m', message, ...SKIP_HISTORY]);
+    await git(cwd, ['-c', 'user.name=AI Team', '-c', 'user.email=ai-team@localhost', 'commit', '-m', message]);
   }
   return true;
+}
+
+// Commits only the given task's history folder; anything else the user has
+// staged or changed stays as it was. -f because .ai-team/ is in info/exclude.
+export async function commitHistory(cwd, dir, message) {
+  const only = ['--', dir];
+  await git(cwd, ['add', '-f', '-A', ...only]);
+  if (!(await git(cwd, ['diff', '--cached', '--quiet', ...only], { allowFail: true })).ok) {
+    const r = await git(cwd, ['commit', '-m', message, ...only], { allowFail: true });
+    if (!r.ok) await git(cwd, ['-c', 'user.name=AI Team', '-c', 'user.email=ai-team@localhost', 'commit', '-m', message, ...only]);
+    return true;
+  }
+  return false;
+}
+
+// A branch that exists only on a remote, e.g. one pushed from another machine.
+export async function remoteBranch(cwd, branch) {
+  const out = (await git(cwd, ['for-each-ref', '--format=%(refname:short)', `refs/remotes/*/${branch}`])).out;
+  return out.split('\n').filter(Boolean)[0] || null;
 }
 
 export async function diff(cwd, base, head) {

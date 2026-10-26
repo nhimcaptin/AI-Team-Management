@@ -250,6 +250,26 @@ export class TaskRunner {
         this.setState({ status: 'error', error: e.message, finishedAt: Date.now() });
       }
     }
+    await this.saveHistory();
+  }
+
+  // With historyInGit on, the chat history is committed on the user's branch so a
+  // push carries it to another machine, where the task can be continued.
+  async saveHistory() {
+    const { projectPath: cwd, branch, merged } = this.task;
+    if (!this.config.historyInGit) return;
+    try {
+      if (!(await git.isRepo(cwd)) || !(await git.hasCommits(cwd))) return;
+      const current = await git.currentBranch(cwd);
+      // never mix it into an AI branch that was not merged
+      if (branch && !merged && current === branch) return;
+      // written before the commit so the commit holds the whole history
+      this.system(`💾 Lưu lịch sử chat vào git (\`${current}\`). Push branch này để làm tiếp task trên máy khác.`);
+      const dir = path.relative(cwd, this.store.taskDir(this.task)).replaceAll('\\', '/');
+      await git.commitHistory(cwd, dir, `ai-team: lưu lịch sử task "${this.task.title}"`);
+    } catch (e) {
+      this.system(`⚠️ Không commit được lịch sử chat: ${e.message}`, 'warn');
+    }
   }
 
   async planPhase() {
@@ -328,6 +348,13 @@ export class TaskRunner {
 
     if (this.task.branch && (await git.branchExists(cwd, this.task.branch))) {
       await git.checkout(cwd, this.task.branch);
+      return;
+    }
+    // task continued on another machine: its branch was pushed but never checked out here
+    const remote = this.task.branch && !this.task.merged && (await git.remoteBranch(cwd, this.task.branch));
+    if (remote) {
+      await git.switchTo(cwd, remote, { remote: true });
+      this.system(`🌿 Lấy branch \`${this.task.branch}\` từ \`${remote}\``);
       return;
     }
     for (;;) {

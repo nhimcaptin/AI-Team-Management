@@ -27,6 +27,9 @@ for (const t of store.list()) {
   }
 }
 
+// Pick up tasks another machine committed into these projects' .ai-team/.
+for (const p of new Set(store.list().map((t) => t.projectPath))) store.importFrom(p);
+
 class Hub {
   clients = new Set();
   add(res) {
@@ -39,6 +42,12 @@ class Hub {
   }
 }
 const hub = new Hub();
+
+function importTasks(projectPath) {
+  const added = store.importFrom(projectPath);
+  for (const task of added) hub.broadcast({ type: 'state', taskId: task.id, task });
+  return added;
+}
 setInterval(() => {
   for (const res of hub.clients) res.write(': ping\n\n');
 }, 20_000).unref();
@@ -178,6 +187,7 @@ const routes = {
     maxDebateRounds: config.maxDebateRounds,
     maxFixRounds: config.maxFixRounds,
     autoModeDefault: config.autoModeDefault,
+    historyInGit: Boolean(config.historyInGit),
     agents: Object.fromEntries(
       await Promise.all(
         Object.entries(config.agents).map(async ([key, a]) => {
@@ -201,6 +211,7 @@ const routes = {
     local.maxDebateRounds = clampInt(body.maxDebateRounds, 1, 10, config.maxDebateRounds);
     local.maxFixRounds = clampInt(body.maxFixRounds, 0, 10, config.maxFixRounds);
     local.autoModeDefault = Boolean(body.autoModeDefault);
+    local.historyInGit = Boolean(body.historyInGit);
     local.agents ||= {};
     for (const [key, a] of Object.entries(body.agents || {})) {
       if (!config.agents[key]) continue;
@@ -304,11 +315,14 @@ const routes = {
     const p = await repoPath(raw);
     // pulling the checked-out branch touches the working tree; other branches do not
     await assertIdle(p, { requireClean: (await git.currentBranch(p)) === branch });
+    let output;
     try {
-      return { ok: true, output: await git.pull(p, String(branch)) };
+      output = await git.pull(p, String(branch));
     } catch (e) {
       throw fail(409, `Pull thất bại:\n${e.message}`);
     }
+    importTasks(p);
+    return { ok: true, output };
   },
 
   'POST /api/git/push': async (req) => {
@@ -368,6 +382,14 @@ const routes = {
     store.add(task);
     startRunner(task);
     return task;
+  },
+
+  'POST /api/tasks/import': async (req) => {
+    const { projectPath: raw } = await readBody(req);
+    const dir = path.resolve(String(raw || '').trim());
+    if (!raw || !fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) throw fail(400, `Không tìm thấy thư mục project: ${dir}`);
+    const added = importTasks(fs.realpathSync.native(dir));
+    return { added: added.length };
   },
 
   'GET /api/tasks/:id/events': (req, id, url) => {

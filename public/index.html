@@ -186,6 +186,7 @@
         <label>Thư mục Project (local)
           <input name="projectPath" required placeholder="D:\projects\my-app">
         </label>
+        <button type="button" class="btn import-btn" id="importTasks">Nhập task có sẵn trong project này (làm tiếp từ máy khác)</button>
         <label>Tiêu đề task (tuỳ chọn)
           <input name="title" placeholder="Tự động lấy từ dòng đầu của yêu cầu">
         </label>
@@ -232,6 +233,7 @@
           <label>Số vòng phản biện tối đa <input type="number" name="maxDebateRounds" min="1" max="10"></label>
           <label>Số lần sửa sau review tối đa <input type="number" name="maxFixRounds" min="0" max="10"></label>
           <label class="inline custom-check-label"><input type="checkbox" name="autoModeDefault" class="checkbox"> <span>Bật Auto mặc định cho task mới</span></label>
+          <label class="inline custom-check-label"><input type="checkbox" name="historyInGit" class="checkbox"> <span>Commit lịch sử chat vào git sau mỗi lượt, để push và làm tiếp task trên máy khác</span></label>
         </div>
 
         <div class="dlg-note">
