@@ -1,0 +1,103 @@
+{
+  "port": 3939,
+  "host": "127.0.0.1",
+  "language": "vi",
+  "roles": {
+    "analyst": "antigravity",
+    "critic": "claude",
+    "coder": "codex"
+  },
+  "maxDebateRounds": 3,
+  "maxFixRounds": 2,
+  "autoModeDefault": false,
+  "timeoutMinutes": {
+    "read": 15,
+    "write": 40
+  },
+  "maxDiffChars": 60000,
+  "agents": {
+    "claude": {
+      "label": "Claude",
+      "color": "#d97757",
+      "avatar": "",
+      "model": "",
+      "modelFlag": "--model",
+      "modelInsertAt": 0,
+      "command": "claude",
+      "format": "claude-stream",
+      "args": {
+        "read": ["-p", "--output-format", "stream-json", "--verbose", "--allowedTools", "Read,Grep,Glob,LS", "--disallowedTools", "Edit,Write,MultiEdit,NotebookEdit,Bash"],
+        "write": ["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits", "--allowedTools", "Read,Grep,Glob,LS,Edit,Write,MultiEdit,Bash"]
+      },
+      "env": {}
+    },
+    "codex": {
+      "label": "Codex",
+      "color": "#10a37f",
+      "avatar": "",
+      "model": "",
+      "modelFlag": "-m",
+      "modelInsertAt": 1,
+      "command": "codex",
+      "format": "codex-json",
+      "args": {
+        "read": [
+          "exec",
+          "--json",
+          "--ephemeral",
+          "--skip-git-repo-check",
+          "--sandbox",
+          "read-only",
+          "-c",
+          "windows.sandbox=unelevated",
+          "-o",
+          "{outFile}",
+          "-"
+        ],
+        "write": [
+          "exec",
+          "--json",
+          "--ephemeral",
+          "--skip-git-repo-check",
+          "--sandbox",
+          "workspace-write",
+          "-c",
+          "windows.sandbox=unelevated",
+          "-o",
+          "{outFile}",
+          "-"
+        ]
+      },
+      "env": {}
+    },
+    "antigravity": {
+      "label": "Antigravity",
+      "color": "#4285f4",
+      "avatar": "",
+      "model": "",
+      "modelFlag": "--model",
+      "modelInsertAt": 0,
+      "command": "agy",
+      "format": "agy-stream",
+      "args": {
+        "read": [
+          "-p",
+          "Read the file {promptFile} and follow every instruction in it exactly.",
+          "--output-format",
+          "stream-json",
+          "--mode",
+          "plan"
+        ],
+        "write": [
+          "-p",
+          "Read the file {promptFile} and follow every instruction in it exactly.",
+          "--output-format",
+          "stream-json",
+          "--mode",
+          "accept-edits"
+        ]
+      },
+      "env": {}
+    }
+  }
+}

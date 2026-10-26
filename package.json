@@ -1,0 +1,16 @@
+{
+  "name": "ai-team",
+  "version": "0.1.0",
+  "description": "Antigravity, Claude và Codex làm việc như một team trong group chat: phân tích, phản biện, code, review.",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "mock": "node src/server.js --mock",
+    "doctor": "node scripts/doctor.js",
+    "clean-sessions": "node scripts/clean-sessions.js"
+  }
+}

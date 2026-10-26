@@ -1,0 +1,4 @@
+node_modules/
+data/
+ai-team.config.local.json
+.ai-team/
