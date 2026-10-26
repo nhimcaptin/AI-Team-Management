@@ -21,6 +21,7 @@ const ICONS = {
   terminal: `<svg class="svg-ico" viewBox="0 0 640 512" fill="currentColor"><path d="M0 128C0 92.7 28.7 64 64 64l512 0c35.3 0 64 28.7 64 64l0 256c0 35.3-28.7 64-64 64L64 448c-35.3 0-64-28.7-64-64L0 128zM172.7 236.7c6.2-6.2 6.2-16.4 0-22.6s-16.4-6.2-22.6 0L96 268.1l54.1 54.1c6.2 6.2 16.4 6.2 22.6 0s6.2-16.4 0-22.6L129.9 279.4l42.7-42.7zm99.3 75.3l96 0c8.8 0 16-7.2 16-16s-7.2-16-16-16l-96 0c-8.8 0-16 7.2-16 16s7.2 16 16 16z"/></svg>`,
   timeline: `<svg class="svg-ico" viewBox="0 0 512 512" fill="currentColor"><path d="M64 64c0-17.7-14.3-32-32-32S0 46.3 0 64L0 400c0 44.2 35.8 80 80 80l400 0c17.7 0 32-14.3 32-32s-14.3-32-32-32L80 416c-8.8 0-16-7.2-16-16L64 64zm406.6 86.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L320 210.7l-57.4-57.4c-12.5-12.5-32.8-12.5-45.3 0l-112 112c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L240 221.3l57.4 57.4c12.5 12.5 32.8 12.5 45.3 0l128-128z"/></svg>`,
   inbox: `<svg class="svg-ico" viewBox="0 0 576 512" fill="currentColor"><path d="M288 352c-44.2 0-80-35.8-80-80l0-144c0-44.2 35.8-80 80-80s80 35.8 80 80l0 144c0 44.2-35.8 80-80 80zM64 256c0-35.3 28.7-64 64-64l32 0 0 80c0 70.7 57.3 128 128 128s128-57.3 128-128l0-80 32 0c35.3 0 64 28.7 64 64l0 160c0 35.3-28.7 64-64 64L64 480c-35.3 0-64-28.7-64-64l0-160z"/></svg>`,
+  trash: `<svg class="svg-ico" viewBox="0 0 448 512" fill="currentColor"><path d="M135.2 17.7L128 32 32 32C14.3 32 0 46.3 0 64S14.3 96 32 96l384 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-96 0-7.2-14.3C307.4 6.8 296.3 0 284.2 0L163.8 0c-12.1 0-23.2 6.8-28.6 17.7zM416 128L32 128 53.2 467c1.6 25.3 22.6 45 47.9 45l245.8 0c25.3 0 46.3-19.7 47.9-45L416 128z"/></svg>`,
   copy: `<svg class="svg-ico" viewBox="0 0 448 512" fill="currentColor"><path d="M384 336l-192 0c-8.8 0-16-7.2-16-16l0-256c0-8.8 7.2-16 16-16l140.1 0L384 95.9 384 320c0 8.8-7.2 16-16 16zM192 0C165.5 0 144 21.5 144 48l0 272c0 26.5 21.5 48 48 48l192 0c26.5 0 48-21.5 48-48l0-212.1c0-12.7-5.1-24.9-14.1-33.9L393.9 14.1C384.9 5.1 372.7 0 360 0L192 0zM64 128c-35.3 0-64 28.7-64 64L0 448c0 35.3 28.7 64 64 64l192 0c35.3 0 64-28.7 64-64l0-32-48 0 0 32c0 8.8-7.2 16-16 16L64 464c-8.8 0-16-7.2-16-16l0-256c0-8.8 7.2-16 16-16l32 0 0-48-32 0z"/></svg>`,
   download: `<svg class="svg-ico" viewBox="0 0 512 512" fill="currentColor"><path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 242.7-73.4-73.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l128 128c12.5 12.5 32.8 12.5 45.3 0l128-128c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L288 274.7 288 32zM64 352c-35.3 0-64 28.7-64 64l0 32c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-32c0-35.3-28.7-64-64-64l-64 0c-17.7 0-32 14.3-32 32s14.3 32 32 32l64 0 0 32-384 0 0-32 64 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-64 0z"/></svg>`,
   upload: `<svg class="svg-ico" viewBox="0 0 512 512" fill="currentColor"><path d="M256 0c17.7 0 32 14.3 32 32l0 242.7 73.4-73.4c12.5-12.5 32.8-12.5 45.3 0s12.5 32.8 0 45.3l-128 128c-12.5 12.5-32.8 12.5-45.3 0l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L224 274.7 224 32c0-17.7 14.3-32 32-32zM64 352c-35.3 0-64 28.7-64 64l0 32c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-32c0-35.3-28.7-64-64-64l-64 0c-17.7 0-32 14.3-32 32s14.3 32 32 32l64 0 0 32-384 0 0-32 64 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-64 0z"/></svg>`,
@@ -82,9 +83,31 @@ async function api(path, body) {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
+  // the router's generic 404: this page knows an API the running server does not
+  if (res.status === 404 && data.error === 'not found') {
+    showRestartBanner();
+    throw new Error('Server đang chạy bản cũ nên chưa có chức năng này. Hãy khởi động lại server (tắt start.cmd rồi mở lại).');
+  }
   if (!res.ok) throw new Error(data.error || res.statusText);
   return data;
 }
+
+function showRestartBanner() {
+  if (document.getElementById('restartBanner')) return;
+  const el = document.createElement('div');
+  el.id = 'restartBanner';
+  el.className = 'restart-banner';
+  el.innerHTML = '⚠️ Code đã được cập nhật nhưng server vẫn chạy bản cũ. Hãy tắt <code>start.cmd</code> rồi mở lại, sau đó tải lại trang.';
+  document.body.prepend(el);
+}
+
+async function checkServerVersion() {
+  try {
+    const c = await fetch('/api/config').then((r) => r.json());
+    if (c.needsRestart) showRestartBanner();
+  } catch {}
+}
+setInterval(checkServerVersion, 60_000);
 
 function store(key, value) {
   try {
@@ -98,6 +121,7 @@ const isLive = () => current && ['queued', 'running', 'waiting'].includes(curren
 // ---------- chat rendering ----------
 
 const box = $('#messages');
+const EMPTY_HTML = $('#emptyState')?.outerHTML || '';
 
 function nearBottom() {
   return box.scrollHeight - box.scrollTop - box.clientHeight < 120;
@@ -452,6 +476,7 @@ function renderTasks() {
       <div class="task-item-head">
         <span class="dot ${esc(t.status)}"></span>
         <span class="t" title="${esc(t.title)}">${esc(t.title)}</span>
+        <span class="task-del" role="button" title="Xoá task" data-del="${esc(t.id)}">${ICONS.trash}</span>
       </div>
       <div class="s">
         <span class="status-text">${STATUS_LABEL[t.status] || t.status}</span>
@@ -460,10 +485,45 @@ function renderTasks() {
       </div>
     </button>`;
   }).join('');
-  list.querySelectorAll('.task-item').forEach((el) => el.addEventListener('click', () => {
+  list.querySelectorAll('.task-item').forEach((el) => el.addEventListener('click', (e) => {
+    if (e.target.closest('[data-del]')) return deleteTask(el.dataset.id);
     openTask(el.dataset.id);
     $('#sidebar').classList.remove('open');
   }));
+}
+
+async function deleteTask(id) {
+  const t = tasks.find((x) => x.id === id);
+  if (!t) return;
+  const live = ['queued', 'running', 'waiting'].includes(t.status);
+  const msg =
+    `Xoá task "${t.title}"?\n\n` +
+    (live ? 'Task đang chạy sẽ bị dừng.\n' : '') +
+    'Lịch sử chat của task sẽ bị xoá vĩnh viễn. Branch git và code AI đã viết vẫn giữ nguyên.';
+  if (!confirm(msg)) return;
+  try {
+    await api(`/api/tasks/${encodeURIComponent(id)}/delete`, {});
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+// Also runs for deletes made in another browser tab.
+function onTaskDeleted(id) {
+  tasks = tasks.filter((t) => t.id !== id);
+  if (current?.id === id) {
+    current = null;
+    lastSeq = 0;
+    bubbles.clear();
+    gates.clear();
+    box.innerHTML = EMPTY_HTML;
+    $('#taskTitle').textContent = 'Chưa chọn task';
+    $('#taskPath').textContent = '';
+    history.replaceState(null, '', location.pathname);
+    renderProgress();
+    if (branchTabOpen()) loadBranches();
+  }
+  renderTasks();
 }
 
 function upsertTask(task) {
@@ -576,6 +636,7 @@ function connect() {
       return;
     }
     if (evt.type === 'cli_install' || evt.type === 'cli_install_done') return onCliEvent(evt);
+    if (evt.type === 'task_deleted') return onTaskDeleted(evt.taskId);
     if (evt.type === 'state') upsertTask(evt.task);
     if (current && evt.taskId === current.id) applyEvent(evt);
   };
@@ -1255,6 +1316,7 @@ $('#settingsForm').addEventListener('submit', async (e) => {
   showTab(store('ai-team.tab') || 'progressTab');
   connect();
   loadCli();
+  if (CONFIG.needsRestart) showRestartBanner();
   tasks = await api('/api/tasks');
   renderTasks();
   renderProgress();

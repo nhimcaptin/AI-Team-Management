@@ -132,7 +132,7 @@ function parseAgyModels(out) {
     const m = line.match(/^([A-Za-z0-9][\w.\-/:@]*)(?:\s+[-–:|]?\s*(.*))?$/);
     // skip headings like "Available models:" (a lone word ending in ':')
     if (!m || /:$/.test(line) || !/[\d-]/.test(m[1])) continue;
-    models.push({ id: m[1], name: m[2] ? `${m[1]} (${m[2].replace(/[()]/g, '').trim()})` : m[1] });
+    models.push({ id: m[1], name: m[2]?.trim() || m[1] });
   }
   return models;
 }

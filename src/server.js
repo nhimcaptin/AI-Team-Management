@@ -101,6 +101,21 @@ function serveStatic(req, res, pathname) {
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
 
+// The UI files are re-read on every request but server code is not, so after a
+// `git pull` the page can be newer than the server. Detect that and tell the user.
+function serverCodeTime() {
+  let latest = 0;
+  for (const dir of ['src', 'ai-team.config.json']) {
+    const p = path.join(ROOT, dir);
+    try {
+      const files = fs.statSync(p).isDirectory() ? fs.readdirSync(p).map((f) => path.join(p, f)) : [p];
+      for (const f of files) latest = Math.max(latest, fs.statSync(f).mtimeMs);
+    } catch {}
+  }
+  return latest;
+}
+const STARTED_CODE_TIME = serverCodeTime();
+
 function runnerFor(id) {
   const r = runners.get(id);
   if (!r) throw fail(409, 'Task không còn chạy (đã xong, đã dừng hoặc server đã khởi động lại)');
@@ -110,7 +125,7 @@ function runnerFor(id) {
 function startRunner(task, opts) {
   const runner = new TaskRunner({ task, store, hub, config, mock: MOCK });
   runners.set(task.id, runner);
-  runner.run(opts).finally(() => runners.delete(task.id));
+  runner.done = runner.run(opts).finally(() => runners.delete(task.id));
   return runner;
 }
 
@@ -155,6 +170,7 @@ const routes = {
     mock: MOCK,
     autoModeDefault: config.autoModeDefault,
     maxDebateRounds: config.maxDebateRounds,
+    needsRestart: serverCodeTime() > STARTED_CODE_TIME,
   }),
 
   'GET /api/settings': async () => ({
@@ -393,6 +409,21 @@ const routes = {
       task.autoMode = Boolean(autoMode);
       store.saveTask(task);
     }
+    return { ok: true };
+  },
+
+  // Removes the task from the list and deletes its chat history folder. Git
+  // branches and code the AIs wrote are left alone.
+  'POST /api/tasks/:id/delete': async (req, id) => {
+    const task = store.get(id);
+    if (!task) throw fail(404, 'Không có task này');
+    const running = runners.get(id);
+    if (running) {
+      running.stop();
+      await running.done;
+    }
+    store.remove(task);
+    hub.broadcast({ type: 'task_deleted', taskId: id });
     return { ok: true };
   },
 

@@ -7,7 +7,10 @@ const IS_WIN = process.platform === 'win32';
 
 function short(obj, max = 90) {
   if (obj == null) return '';
-  const pick = obj.file_path || obj.path || obj.absolute_path || obj.pattern || obj.command || obj.query;
+  // agy capitalizes its tool parameters (Path, CommandLine, Query)
+  const pick =
+    obj.file_path || obj.path || obj.absolute_path || obj.pattern || obj.command || obj.query ||
+    obj.Path || obj.AbsolutePath || obj.CommandLine || obj.Query || obj.SearchPath || obj.Url;
   const s = typeof pick === 'string' ? pick : typeof obj === 'string' ? obj : JSON.stringify(obj);
   return s.length > max ? s.slice(0, max) + '…' : s;
 }
@@ -51,20 +54,31 @@ const PARSERS = {
     else if (obj.type === 'result' && obj.status === 'error') acc.error(obj.error?.message || 'CLI báo lỗi');
   },
 
-  // Antigravity CLI. Its stream-json events are not documented yet, so accept
-  // both the Claude Code and the Gemini CLI shapes plus plain text deltas.
+  // Antigravity CLI (agy 1.4): {"event":"init"|"step_update"|"result", ...}.
+  // Reply text arrives as text_delta on agent_response steps; other steps are tool use.
   'agy-stream'(obj, acc) {
-    if (obj.type === 'assistant') return PARSERS['claude-stream'](obj, acc);
-    if (obj.type === 'result') {
-      if (obj.is_error || obj.status === 'error') acc.error(obj.error?.message || obj.result || 'Antigravity báo lỗi');
-      else if (typeof obj.result === 'string') acc.final(obj.result);
-      else if (typeof obj.response === 'string') acc.final(obj.response);
-      return;
+    const s = obj.step_update;
+    if (obj.event === 'step_update' && s) {
+      if (s.step_type === 'agent_response') {
+        if (s.text_delta) acc.delta(s.text_delta);
+      } else if (s.step_type !== 'user_input') {
+        // a step reports several updates; show it once
+        acc.agySteps ||= new Set();
+        if (!acc.agySteps.has(s.step_index)) {
+          acc.agySteps.add(s.step_index);
+          acc.activity(`🔧 ${s.tool_name || s.step_type} ${short(s.tool_info?.parameters)}`.trim());
+        }
+      }
+    } else if (obj.event === 'result') {
+      const r = obj.result || {};
+      const denied = (r.denied_actions || []).map((d) => d.display_name || d.action).join(', ');
+      if (r.status && r.status !== 'SUCCESS') acc.error(r.error?.message || r.error || `Antigravity kết thúc với trạng thái ${r.status}`);
+      // headless agy cannot ask for permission: a denied tool can end the turn with no answer
+      else if (!r.response?.trim() && denied) acc.error(`Antigravity không trả lời vì bị chặn quyền: ${denied}. Chế độ chạy nền không hỏi quyền được.`);
+      else if (typeof r.response === 'string') acc.final(r.response);
+    } else if (obj.event === 'error') {
+      acc.error(obj.error?.message || obj.message || 'Antigravity báo lỗi');
     }
-    if (['message', 'tool_use', 'error'].includes(obj.type)) return PARSERS['gemini-stream'](obj, acc);
-    const text = obj.delta?.text ?? obj.text ?? obj.content;
-    if (typeof text === 'string' && /delta|text|content|chunk/i.test(obj.type || '')) acc.delta(text);
-    else if (/tool|command/i.test(obj.type || '')) acc.activity(`🔧 ${obj.name || obj.tool_name || obj.type} ${short(obj.input || obj.parameters || obj.args)}`);
   },
 
   // plain text output: every line is part of the answer

@@ -215,7 +215,7 @@ svg {
   justify-content: space-between;
   gap: 10px;
   padding: 16px 14px 12px;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border);
   background: var(--panel);
 }
 
@@ -519,7 +519,7 @@ svg {
   display: flex;
   gap: 8px;
   padding: 10px 14px;
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border);
   background: var(--panel);
 }
 
@@ -620,14 +620,21 @@ svg {
 }
 
 .empty-icon-wrap {
-  width: 64px;
-  height: 64px;
+  width: 68px;
+  height: 68px;
   margin: 0 auto 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-subtle);
+  border: 1.5px solid var(--accent-border);
+  color: var(--accent);
+  box-shadow: 0 4px 16px rgba(104, 107, 245, 0.2);
 }
 
 .empty-svg {
-  width: 100%;
-  height: 100%;
+  width: 34px;
+  height: 34px;
 }
 
 .empty h3 {
@@ -680,7 +687,7 @@ svg {
 }
 
 .bubble {
-  background: var(--panel);
+  background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 4px 14px 14px 14px;
   padding: 12px 16px;
@@ -1479,9 +1486,9 @@ pre.plain {
 .stages::before {
   content: "";
   position: absolute;
-  left: 19px;
-  top: 14px;
-  bottom: 14px;
+  left: 30px;
+  top: 20px;
+  bottom: 20px;
   width: 2px;
   background: var(--border);
 }
@@ -1490,12 +1497,13 @@ pre.plain {
   display: flex;
   gap: 12px;
   align-items: center;
-  padding: 6px 8px;
+  padding: 7px 10px;
   border-radius: var(--radius-md);
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 13px;
   position: relative;
   transition: all 0.15s ease;
+  border: 1px solid transparent;
 }
 
 .stages li .n {
@@ -1507,7 +1515,8 @@ pre.plain {
   font-size: 11px;
   font-weight: 700;
   border: 2px solid var(--border);
-  background: var(--panel);
+  background: var(--panel-2);
+  color: var(--muted);
   flex-shrink: 0;
   z-index: 1;
   transition: all 0.15s ease;
@@ -1520,6 +1529,7 @@ pre.plain {
 
 .stages li.done {
   color: var(--text);
+  font-weight: 600;
 }
 
 .stages li.done .n {
@@ -1529,16 +1539,17 @@ pre.plain {
 }
 
 .stages li.current {
-  background: var(--panel-2);
+  background: var(--accent-subtle);
+  border-color: var(--accent-border);
   color: var(--text);
   font-weight: 700;
 }
 
 .stages li.current .n {
   border-color: var(--accent);
-  color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-subtle);
-  background: var(--panel);
+  color: #ffffff;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(104, 107, 245, 0.4);
 }
 
 .stages li .r {
@@ -2225,7 +2236,7 @@ dialog h4 {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 0 12px;
-  background: var(--panel-2);
+  background: var(--panel);
   color: var(--text);
   font-size: 13px;
   font-weight: 500;
@@ -2685,3 +2696,20 @@ dialog h4 {
 .cli-log { margin: 4px 0 0; max-height: 180px; overflow: auto; background: var(--code-bg); color: #e6e6e6; border-radius: 8px; padding: 8px 10px; font-size: 11.5px; white-space: pre-wrap; }
 .team-online-dot.cli-missing { background: var(--err); cursor: pointer; }
 @media (max-width: 960px) { .cli-row { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- delete task ---------- */
+.task-item-head { position: relative; }
+.task-del { margin-left: auto; flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; color: var(--muted); opacity: 0; transition: opacity .12s; cursor: pointer; }
+.task-del .svg-ico { width: 12px; height: 12px; }
+.task-item:hover .task-del, .task-item:focus-within .task-del, .task-item.active .task-del { opacity: 1; }
+.task-del:hover { background: var(--err-bg); color: var(--err); }
+@media (hover: none) { .task-del { opacity: 1; } }
+
+/* ---------- server needs restart ---------- */
+.restart-banner {
+  position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 100;
+  max-width: calc(100vw - 32px); padding: 10px 16px; border-radius: 10px;
+  background: var(--warn-bg, #fef3c7); color: var(--warn, #92400e); border: 1px solid currentColor;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .2); font-size: 13px;
+}
+.restart-banner code { background: rgba(0, 0, 0, .08); padding: 0 4px; border-radius: 4px; }

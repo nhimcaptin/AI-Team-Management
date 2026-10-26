@@ -51,6 +51,17 @@ export class Store {
     fs.writeFileSync(path.join(dir, 'task.json'), JSON.stringify(task, null, 2));
   }
 
+  remove(task) {
+    this.tasks = this.tasks.filter((t) => t.id !== task.id);
+    this.#writeIndex();
+    fs.rmSync(this.taskDir(task), { recursive: true, force: true });
+    // drop <project>/.ai-team too once its last task is gone
+    const parent = path.dirname(this.taskDir(task));
+    try {
+      if (!fs.readdirSync(parent).length) fs.rmdirSync(parent);
+    } catch {}
+  }
+
   appendEvent(task, evt) {
     const dir = this.taskDir(task);
     fs.mkdirSync(dir, { recursive: true });

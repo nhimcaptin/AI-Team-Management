@@ -81,20 +81,20 @@
       "format": "agy-stream",
       "args": {
         "read": [
-          "-p",
-          "Read the file {promptFile} and follow every instruction in it exactly.",
           "--output-format",
           "stream-json",
           "--mode",
-          "plan"
+          "plan",
+          "-p",
+          "Read the file {promptFile} and follow every instruction in it exactly. Explore the project only with your file tools (read, list, find, grep, edit); do not run shell commands, they are denied in this non-interactive mode."
         ],
         "write": [
-          "-p",
-          "Read the file {promptFile} and follow every instruction in it exactly.",
           "--output-format",
           "stream-json",
           "--mode",
-          "accept-edits"
+          "accept-edits",
+          "-p",
+          "Read the file {promptFile} and follow every instruction in it exactly. Explore the project only with your file tools (read, list, find, grep, edit); do not run shell commands, they are denied in this non-interactive mode."
         ]
       },
       "env": {}
