@@ -29,7 +29,7 @@ const ICONS = {
 };
 
 const ROLE_LABEL = { analyst: 'Phân tích', critic: 'Phản biện', coder: 'Code' };
-const STEP_LABEL = { analyze: 'phân tích', critique: 'phản biện', code: 'viết code', review: 'review' };
+const STEP_LABEL = { analyze: 'phân tích', critique: 'phản biện', code: 'viết code', review: 'review', reply: 'trả lời' };
 const STAGES = [
   ['analyze', 'Phân tích'],
   ['critique', 'Phản biện'],
@@ -159,6 +159,16 @@ function addStage(evt) {
   append(h(`<div class="stage-div"><span class="stage-pill">${ICONS.timeline} <span>${esc(evt.text)}</span></span></div>`));
 }
 
+function userImages(evt) {
+  if (!evt.images?.length) return '';
+  return `<div class="msg-images">${evt.images
+    .map((n) => {
+      const url = `/api/tasks/${encodeURIComponent(evt.taskId)}/images/${encodeURIComponent(n)}`;
+      return `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="Ảnh đính kèm" loading="lazy"></a>`;
+    })
+    .join('')}</div>`;
+}
+
 function addUser(evt) {
   append(
     h(`<div class="msg user">
@@ -170,7 +180,8 @@ function addUser(evt) {
           <span class="name">Bạn</span>
           <span class="time">${time(evt.ts)}</span>
         </div>
-        <div class="content">${md(evt.text)}</div>
+        ${evt.text ? `<div class="content">${md(evt.text)}</div>` : ''}
+        ${userImages(evt)}
       </div>
     </div>`),
     { force: true },
@@ -237,7 +248,8 @@ function agentEnd(evt) {
       .join('') + '</ul>';
   }
   $('.content', b.el).innerHTML = html || '<span class="muted">(không có nội dung)</span>';
-  if (evt.verdict) {
+  // a reply's ANSWER/TASK only routes the message, it is not a good/bad verdict
+  if (evt.verdict && evt.step !== 'reply') {
     const isGood = GOOD.includes(evt.verdict);
     const ico = isGood ? ICONS.checkCircle : ICONS.alert;
     $('.verdict', b.el).innerHTML = `<span class="badge ${isGood ? 'good' : 'bad'}">${ico} <span>${esc(evt.verdict)}</span></span>`;
@@ -350,7 +362,7 @@ function applyEvent(evt) {
     case 'report': addReport(evt); break;
     case 'followup':
       append(h(`<div class="stage-div"><span class="stage-pill">${ICONS.repeat} <span>Yêu cầu tiếp theo #${evt.n}</span></span></div>`));
-      addUser(evt);
+      if (evt.text) addUser(evt); // older events carried the message here
       break;
   }
 }
@@ -642,20 +654,91 @@ function connect() {
   };
 }
 
+// ---------- pasted images ----------
+
+const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+const MAX_IMAGES = 10;
+const MAX_IMAGE_MB = 10;
+
+// Images pasted or dropped into a textarea wait as thumbnails until the message is sent.
+function imageAttacher(textarea, strip) {
+  const items = [];
+  const render = () => {
+    strip.innerHTML = items
+      .map((src, i) => `<span class="attach-thumb"><img src="${src}" alt=""><button type="button" class="attach-remove" data-i="${i}" title="Bỏ ảnh" aria-label="Bỏ ảnh">×</button></span>`)
+      .join('');
+  };
+  const add = (files) => {
+    for (const f of files) {
+      if (!IMAGE_TYPES.includes(f.type)) continue;
+      if (items.length >= MAX_IMAGES) return alert(`Tối đa ${MAX_IMAGES} ảnh mỗi tin nhắn`);
+      if (f.size > MAX_IMAGE_MB * 1024 * 1024) {
+        alert(`Ảnh "${f.name}" lớn hơn ${MAX_IMAGE_MB} MB`);
+        continue;
+      }
+      const r = new FileReader();
+      r.onload = () => {
+        items.push(r.result);
+        render();
+      };
+      r.readAsDataURL(f);
+    }
+  };
+  const imageFiles = (dt) => [...(dt?.files || [])].filter((f) => f.type.startsWith('image/'));
+  textarea.addEventListener('paste', (e) => {
+    const files = imageFiles(e.clipboardData);
+    if (!files.length) return;
+    // a copy from a web page carries both text and the image: keep pasting the text
+    if (!e.clipboardData.types.includes('text/plain')) e.preventDefault();
+    add(files);
+  });
+  const zone = strip.parentElement;
+  zone.addEventListener('dragover', (e) => {
+    if (e.dataTransfer.types.includes('Files')) e.preventDefault();
+  });
+  zone.addEventListener('drop', (e) => {
+    const files = imageFiles(e.dataTransfer);
+    if (!files.length || textarea.disabled) return;
+    e.preventDefault();
+    add(files);
+  });
+  strip.addEventListener('click', (e) => {
+    const b = e.target.closest('.attach-remove');
+    if (!b) return;
+    items.splice(Number(b.dataset.i), 1);
+    render();
+  });
+  return {
+    get images() {
+      return [...items];
+    },
+    set(list) {
+      items.splice(0, items.length, ...list);
+      render();
+    },
+  };
+}
+
+const msgImages = imageAttacher($('#msgInput'), $('#msgAttach'));
+const newImages = imageAttacher($('#newTaskForm').request, $('#newAttach'));
+
 // ---------- controls ----------
 
 $('#composer').addEventListener('submit', async (e) => {
   e.preventDefault();
   const input = $('#msgInput');
   const text = input.value.trim();
-  if (!text || !current) return;
+  const images = msgImages.images;
+  if ((!text && !images.length) || !current) return;
   input.value = '';
   input.style.height = '';
+  msgImages.set([]);
   try {
-    await api(`/api/tasks/${current.id}/message`, { text });
+    await api(`/api/tasks/${current.id}/message`, { text, images });
   } catch (err) {
     alert(err.message);
     input.value = text;
+    msgImages.set(images);
   }
 });
 $('#msgInput').addEventListener('keydown', (e) => {
@@ -692,6 +775,7 @@ const dialog = $('#newTaskDialog');
 $('#newTaskBtn').addEventListener('click', () => {
   const f = $('#newTaskForm');
   f.reset();
+  newImages.set([]);
   f.projectPath.value = store('ai-team.lastProject') || '';
   f.autoMode.checked = Boolean(CONFIG?.autoModeDefault);
   $('#newTaskError').textContent = '';
@@ -718,6 +802,7 @@ $('#newTaskForm').addEventListener('submit', async (e) => {
   try {
     const task = await api('/api/tasks', {
       request: f.request.value, projectPath: f.projectPath.value, title: f.title.value, autoMode: f.autoMode.checked,
+      images: newImages.images,
     });
     store('ai-team.lastProject', f.projectPath.value);
     dialog.close();

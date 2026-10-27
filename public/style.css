@@ -780,6 +780,22 @@ svg {
   border: 0;
 }
 
+.msg-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.msg-images img {
+  display: block;
+  max-width: 240px;
+  max-height: 180px;
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  object-fit: contain;
+}
+
 /* Message Markdown Content */
 .content {
   font-size: 13.5px;
@@ -1259,6 +1275,53 @@ pre.plain {
   border-radius: var(--radius-lg);
   padding: 6px 8px 6px 14px;
   transition: all 0.15s ease;
+}
+
+.composer-box {
+  flex-wrap: wrap;
+}
+
+/* pasted images waiting to be sent; on their own row above the text */
+.attach-strip {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.attach-strip:empty {
+  display: none;
+}
+
+.attach-thumb {
+  position: relative;
+  display: block;
+}
+
+.attach-thumb img {
+  display: block;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.attach-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--muted);
+  color: var(--panel);
+  font-size: 13px;
+  line-height: 18px;
+  cursor: pointer;
 }
 
 .composer-box:focus-within {

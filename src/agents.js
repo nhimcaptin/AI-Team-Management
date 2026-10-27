@@ -39,7 +39,9 @@ const PARSERS = {
         acc.activity(`✏️ ${(item.changes || []).map((c) => `${c.kind || ''} ${c.path}`.trim()).join(', ')}`);
       } else if (item.type === 'mcp_tool_call') acc.activity(`🔧 ${item.server || ''} ${item.tool || ''}`);
       else if (item.type === 'web_search') acc.activity(`🔎 ${short(item.query)}`);
-      else if (item.type === 'error') acc.error(item.message);
+      // non-fatal (e.g. "ignoring unrecognized configuration setting"); real
+      // failures arrive as turn.failed, a top-level error or a non-zero exit
+      else if (item.type === 'error') acc.activity(`⚠️ ${short(item.message, 200)}`);
     } else if (obj.type === 'turn.failed') {
       acc.error(obj.error?.message || 'Codex turn failed');
     } else if (obj.type === 'error') {

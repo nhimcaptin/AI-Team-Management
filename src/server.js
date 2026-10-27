@@ -76,13 +76,16 @@ function send(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-function readBody(req) {
+function readBody(req, limit = 1_000_000) {
   return new Promise((resolve, reject) => {
     let raw = '';
     req.setEncoding('utf8');
     req.on('data', (c) => {
       raw += c;
-      if (raw.length > 1_000_000) reject(new Error('Body quá lớn'));
+      if (raw.length > limit) {
+        reject(fail(413, 'Dữ liệu gửi lên quá lớn'));
+        req.destroy();
+      }
     });
     req.on('end', () => {
       try {
@@ -109,6 +112,44 @@ function serveStatic(req, res, pathname) {
 }
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
+
+// Pasted images arrive as data URLs and are saved next to the task's chat
+// history, so the AIs can open them and they travel with it to another machine.
+const IMAGE_TYPES = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp' };
+const MAX_IMAGES = 10;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const WITH_IMAGES_LIMIT = (MAX_IMAGES * MAX_IMAGE_BYTES * 4) / 3 + 1_000_000;
+
+function saveImages(task, images) {
+  if (!Array.isArray(images) || !images.length) return [];
+  if (images.length > MAX_IMAGES) throw fail(400, `Tối đa ${MAX_IMAGES} ảnh mỗi tin nhắn`);
+  const decoded = images.map((src) => {
+    const m = /^data:(image\/[a-z]+);base64,(.+)$/s.exec(String(src));
+    if (!m || !IMAGE_TYPES[m[1]]) throw fail(400, 'Chỉ nhận ảnh PNG, JPEG, GIF hoặc WebP');
+    const buf = Buffer.from(m[2], 'base64');
+    if (buf.length > MAX_IMAGE_BYTES) throw fail(400, `Mỗi ảnh tối đa ${MAX_IMAGE_BYTES / 1024 / 1024} MB`);
+    return { buf, ext: IMAGE_TYPES[m[1]] };
+  });
+  const dir = path.join(store.taskDir(task), 'images');
+  fs.mkdirSync(dir, { recursive: true });
+  const stamp = Date.now();
+  return decoded.map(({ buf, ext }, i) => {
+    const name = `${stamp}-${i + 1}${ext}`;
+    fs.writeFileSync(path.join(dir, name), buf);
+    return name;
+  });
+}
+
+function serveImage(res, id, name) {
+  const task = store.get(id);
+  const type = Object.keys(IMAGE_TYPES).find((t) => IMAGE_TYPES[t] === path.extname(name));
+  if (!task || !type || !/^[\w.-]+$/.test(name)) return send(res, 404, { error: 'not found' });
+  fs.readFile(path.join(store.taskDir(task), 'images', name), (err, data) => {
+    if (err) return send(res, 404, { error: 'not found' });
+    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'private, max-age=86400' });
+    res.end(data);
+  });
+}
 
 // The UI files are re-read on every request but server code is not, so after a
 // `git pull` the page can be newer than the server. Detect that and tell the user.
@@ -358,7 +399,7 @@ const routes = {
   'GET /api/tasks': () => store.list(),
 
   'POST /api/tasks': async (req) => {
-    const body = await readBody(req);
+    const body = await readBody(req, WITH_IMAGES_LIMIT);
     const request = String(body.request || '').trim();
     let projectPath = path.resolve(String(body.projectPath || '').trim());
     if (!request) throw Object.assign(new Error('Hãy nhập yêu cầu'), { status: 400 });
@@ -379,6 +420,7 @@ const routes = {
       round: null,
       autoMode: body.autoMode ?? config.autoModeDefault,
     };
+    task.requestImages = saveImages(task, body.images);
     store.add(task);
     startRunner(task);
     return task;
@@ -399,19 +441,20 @@ const routes = {
   },
 
   'POST /api/tasks/:id/message': async (req, id) => {
-    const { text } = await readBody(req);
+    const { text, images: pasted } = await readBody(req, WITH_IMAGES_LIMIT);
     const msg = String(text || '').trim();
-    if (!msg) throw fail(400, 'Tin nhắn trống');
-    const running = runners.get(id);
-    if (running) {
-      running.addUserMessage(msg);
-      return { ok: true };
-    }
-    // Task already finished: the message becomes a follow-up request.
+    if (!msg && !pasted?.length) throw fail(400, 'Tin nhắn trống');
     const task = store.get(id);
     if (!task) throw fail(404, 'Không có task này');
     if (!fs.existsSync(task.projectPath)) throw fail(409, `Không còn thấy thư mục project: ${task.projectPath}`);
-    startRunner(task, { followUp: msg });
+    const images = saveImages(task, pasted);
+    const running = runners.get(id);
+    if (running) {
+      running.addUserMessage(msg, images);
+      return { ok: true };
+    }
+    // Task already finished: the message becomes a follow-up request.
+    startRunner(task, { followUp: msg, images });
     return { ok: true, followUp: true };
   },
 
@@ -474,6 +517,8 @@ const server = http.createServer(async (req, res) => {
     hub.add(res);
     return;
   }
+  const img = req.method === 'GET' && url.pathname.match(/^\/api\/tasks\/([^/]+)\/images\/([^/]+)$/);
+  if (img) return serveImage(res, decodeURIComponent(img[1]), decodeURIComponent(img[2]));
   const route = match(req.method, url.pathname);
   if (!route) {
     if (req.method === 'GET' && !url.pathname.startsWith('/api/')) return serveStatic(req, res, url.pathname);

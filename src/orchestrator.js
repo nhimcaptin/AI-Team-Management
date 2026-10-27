@@ -68,9 +68,9 @@ export class TaskRunner {
 
   // ---------- user controls ----------
 
-  addUserMessage(text) {
-    this.userMsgs.push({ text, ts: Date.now(), seen: false });
-    this.emit('user_message', { text });
+  addUserMessage(text, images = []) {
+    this.userMsgs.push({ text, images, ts: Date.now(), seen: false });
+    this.emit('user_message', { text, images });
   }
 
   setAuto(on) {
@@ -106,15 +106,22 @@ export class TaskRunner {
 
   // ---------- building blocks ----------
 
+  // Pasted images reach the AIs as file paths they open with their own tools.
+  withImages(text, images) {
+    if (!images?.length) return text;
+    const dir = path.join(this.store.taskDir(this.task), 'images');
+    return `${text}\n\nAttached images (open these files to see them):\n${images.map((n) => `- ${path.join(dir, n)}`).join('\n')}`.trim();
+  }
+
   ctx() {
-    const userMessages = this.userMsgs.map((m) => ({ text: m.text, ts: m.ts, fresh: !m.seen }));
+    const userMessages = this.userMsgs.map((m) => ({ text: this.withImages(m.text, m.images), ts: m.ts, fresh: !m.seen }));
     for (const m of this.userMsgs) m.seen = true;
     return {
       team: this.team,
       language: this.config.language,
       projectPath: this.task.projectPath,
-      request: this.task.request,
-      history: this.task.history || [],
+      request: this.withImages(this.task.request, this.task.requestImages),
+      history: (this.task.history || []).map((h) => ({ ...h, request: this.withImages(h.request, h.images) })),
       maxDiffChars: this.config.maxDiffChars,
       userMessages,
     };
@@ -156,7 +163,7 @@ export class TaskRunner {
       outFile: base + '.last.txt',
       timeoutMs: minutes * 60_000,
       mock: this.mock,
-      meta: { role, step, round: meta.round ?? 1 },
+      meta: { role, step, round: meta.round ?? 1, message: meta.message },
       onEvent: (e) => {
         if (e.type === 'delta') this.emit('agent_delta', { msgId, text: e.text }, { persist: false });
         else this.emit('agent_activity', { msgId, text: e.text });
@@ -199,30 +206,63 @@ export class TaskRunner {
       throw new StopError();
     }
     if (meta.verdicts && !verdict) {
-      this.system(`${agentCfg.label} không trả về verdict hợp lệ, coi như chưa đồng ý.`, 'warn');
+      this.system(`${agentCfg.label} không trả về verdict hợp lệ, ${meta.noVerdict || 'coi như chưa đồng ý'}.`, 'warn');
     }
     return { text: res.text, verdict };
   }
 
   // ---------- pipeline ----------
 
+  // A message on a finished task is first read by the analyst: a question is
+  // answered right away, and only a request for code changes goes on to the
+  // pipeline. Returns true when the pipeline should run.
+  async triage(message, images) {
+    const t = this.task;
+    const prevStatus = t.status;
+    this.emit('user_message', { text: message, images });
+    this.setState({ status: 'running' });
+    const full = this.withImages(message, images);
+    try {
+      const r = await this.callAgent(
+        'analyst',
+        'reply',
+        P.reply(this.ctx(), { message: full, lastPlan: t.lastPlan, status: prevStatus, branch: t.branch, merged: t.merged, qa: t.qa }),
+        'read',
+        { verdicts: ['ANSWER', 'TASK'], noVerdict: 'coi như chỉ là câu trả lời', message },
+      );
+      if (r.verdict?.verdict === 'TASK') return true;
+      this.setState({ qa: [...(t.qa || []), { q: full, a: P.stripVerdict(r.text) }].slice(-10) });
+    } catch (e) {
+      if (e instanceof StopError || this.stopped) this.system('Đã dừng.', 'warn');
+      else this.system(`Lỗi: ${e.message}`, 'error');
+    }
+    this.setState({ status: prevStatus });
+    await this.saveHistory();
+    return false;
+  }
+
   // A follow-up reruns the whole pipeline on the same task, with the earlier
   // requests and plans as context. A merged branch is not reused.
-  async run({ followUp } = {}) {
+  async run({ followUp, images = [] } = {}) {
     const t = this.task;
-    if (followUp) {
-      const history = [...(t.history || []), { request: t.request, plan: t.lastPlan, branch: t.branch, merged: Boolean(t.merged) }];
-      const patch = { history, request: followUp, startedAt: Date.now(), finishedAt: null, error: null, merged: undefined, stage: null, round: null };
+    if (followUp != null) {
+      if (!(await this.triage(followUp, images))) return;
+      const history = [
+        ...(t.history || []),
+        { request: t.request, images: t.requestImages, plan: t.lastPlan, branch: t.branch, merged: Boolean(t.merged) },
+      ];
+      const patch = { history, request: followUp, requestImages: images, startedAt: Date.now(), finishedAt: null, error: null, merged: undefined, stage: null, round: null };
       if (t.merged) Object.assign(patch, { branch: null, baseBranch: null });
       this.setState(patch);
-      this.emit('followup', { n: history.length + 1, text: followUp });
+      // the message itself was already shown by triage
+      this.emit('followup', { n: history.length + 1 });
     } else {
       this.setState({ startedAt: Date.now() });
-      this.emit('user_message', { text: t.request });
+      this.emit('user_message', { text: t.request, images: t.requestImages });
     }
     this.setState({ status: 'running' });
     this.system(
-      `${followUp ? 'Bắt đầu yêu cầu tiếp theo' : 'Bắt đầu task'}. ${this.team.analyst.label} phân tích, ${this.team.critic.label} phản biện, ${this.team.coder.label} viết code.` +
+      `${followUp != null ? 'Bắt đầu yêu cầu tiếp theo' : 'Bắt đầu task'}. ${this.team.analyst.label} phân tích, ${this.team.critic.label} phản biện, ${this.team.coder.label} viết code.` +
         (this.mock ? ' (chế độ mock)' : ''),
     );
     try {

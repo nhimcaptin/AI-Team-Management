@@ -53,10 +53,19 @@ const BUNDLED = {
       .flatMap(subdirs)
       .sort(byVersionDesc)
       .flatMap((v) => subdirs(v).map((h) => ({ path: path.join(h, IS_WIN ? 'claude.exe' : 'claude'), source: `Claude Desktop (${path.basename(v)})` }))),
-  codex: () =>
-    subdirs(path.join(process.env.CODEX_HOME || path.join(HOME, '.codex'), 'packages', 'app-server-daemon', 'releases'))
+  codex: () => [
+    // newer desktop app (also the Microsoft Store one): %LOCALAPPDATA%\OpenAI\Codex\bin\<hash>\.
+    // The folder names are hashes, so the newest copy is picked by file time.
+    ...(IS_WIN ? subdirs(path.join(LOCALAPPDATA, 'OpenAI', 'Codex', 'bin')) : [])
+      .map((d) => path.join(d, 'codex.exe'))
+      .map((p) => ({ p, t: fs.statSync(p, { throwIfNoEntry: false })?.mtimeMs ?? -1 }))
+      .filter((x) => x.t >= 0)
+      .sort((a, b) => b.t - a.t)
+      .map((x) => ({ path: x.p, source: 'app Codex' })),
+    ...subdirs(path.join(process.env.CODEX_HOME || path.join(HOME, '.codex'), 'packages', 'app-server-daemon', 'releases'))
       .sort(byVersionDesc)
       .map((r) => ({ path: path.join(r, 'bin', IS_WIN ? 'codex.exe' : 'codex'), source: `app Codex (${path.basename(r).split('-')[0]})` })),
+  ],
   agy: () =>
     IS_WIN
       ? ['agy.exe', 'agy.cmd'].map((f) => ({ path: path.join(LOCALAPPDATA, 'agy', 'bin', f), source: 'Antigravity CLI' }))

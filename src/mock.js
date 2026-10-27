@@ -3,7 +3,16 @@ import path from 'node:path';
 
 // Scripted answers so the UI and pipeline can be tried without spending quota.
 // The critic objects in round 1, and the risk reviewer asks for changes once.
-function script({ role, step, round }) {
+function script({ role, step, round, message }) {
+  if (step === 'reply') {
+    const question = /\?\s*$/.test(message || '');
+    return {
+      text: question
+        ? `Đã xong, \`ai-team-mock.txt\` có đủ thời gian tạo và mô tả mục đích.\n\n\`\`\`json\n{"verdict": "ANSWER", "issues": []}\n\`\`\``
+        : `Đây là yêu cầu sửa code, chuyển cho cả team làm.\n\n\`\`\`json\n{"verdict": "TASK", "issues": []}\n\`\`\``,
+      activity: ['🔧 Read ai-team-mock.txt'],
+    };
+  }
   if (step === 'analyze') {
     return {
       text: `## Hiểu vấn đề

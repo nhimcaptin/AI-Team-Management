@@ -80,6 +80,26 @@ ${revising ? 'Answer every critique point explicitly: accepted (and how the plan
   );
 }
 
+// A message on a task that is no longer running: answer it, or hand it to the
+// full pipeline when it asks for new work.
+export function reply(ctx, { message, lastPlan, status, branch, merged, qa }) {
+  const recent = (qa || []).slice(-5).map((x) => `**Lead:** ${x.q}\n**You:** ${clip(x.a, 1500)}`);
+  return (
+    header(ctx, 'analyst') +
+    `\n\nTask: the human lead sent the message below on a task the team already worked on. Read the code if needed (read only, do NOT modify any file), then decide:
+- ANSWER: a question, confirmation, status check or discussion (e.g. "is this part done?", "why did you do X?", "where is Y?"). Answer it directly and concretely, checking the actual code rather than guessing.
+- TASK: the lead asks for code to be written, changed, fixed or removed. Do not do the work and do not plan it in detail; reply with one or two sentences restating what will be done. The team then runs the full analyse, critique, code and review pipeline on it.
+When unsure, prefer ANSWER and ask the lead whether they want the change made.` +
+    section('Task state', `Status: ${status}. Branch: ${branch || '(none)'}, ${merged ? 'merged' : 'not merged'}.`) +
+    section('Latest request', ctx.request) +
+    section('Latest agreed plan', clip(lastPlan, 6000)) +
+    previousWork(ctx) +
+    section('Earlier questions and answers', recent.join('\n\n')) +
+    section('Message from the human lead', message) +
+    verdictBlock(['ANSWER', 'TASK'], 'ANSWER = your reply is the whole answer; TASK = the message needs code changes. Leave "issues" empty.')
+  );
+}
+
 export function critique(ctx, { analysis, round, maxRounds }) {
   return (
     header(ctx, 'critic') +
