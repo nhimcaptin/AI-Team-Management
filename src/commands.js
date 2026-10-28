@@ -35,10 +35,12 @@ function nvmShims(cmd) {
 
 // Claude Desktop from the Microsoft Store is an MSIX package: Windows redirects its
 // AppData\Roaming\Claude into Packages\Claude_<id>\LocalCache, and only processes
-// inside the package see the redirected path. Look in both places.
+// inside the package see the redirected path. Newer versions moved their data to
+// %LOCALAPPDATA%\Claude-Data\<package>\. Look in all of these.
 function claudeDesktopDirs() {
   const dirs = [path.join(APPDATA, 'Claude', 'claude-code')];
   if (IS_WIN) {
+    for (const d of subdirs(path.join(LOCALAPPDATA, 'Claude-Data'))) dirs.push(path.join(d, 'claude-code'));
     for (const pkg of subdirs(path.join(LOCALAPPDATA, 'Packages')).filter((d) => /^Claude_/i.test(path.basename(d)))) {
       dirs.push(path.join(pkg, 'LocalCache', 'Roaming', 'Claude', 'claude-code'));
     }
