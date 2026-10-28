@@ -29,7 +29,19 @@ const ICONS = {
 };
 
 const ROLE_LABEL = { analyst: 'Phân tích', critic: 'Phản biện', coder: 'Code' };
-const STEP_LABEL = { analyze: 'phân tích', critique: 'phản biện', code: 'viết code', review: 'review', reply: 'trả lời' };
+const STEP_LABEL = {
+  analyze: 'phân tích', critique: 'phản biện', code: 'viết code', review: 'review', reply: 'trả lời',
+  opinion: 'quan điểm', discuss: 'trao đổi', minutes: 'biên bản',
+};
+// in a discussion the coder judges feasibility instead of writing code
+const PANEL_LABEL = { ...ROLE_LABEL, coder: 'Khả thi' };
+const roleLabel = (role) => (current?.mode === 'discuss' ? PANEL_LABEL : ROLE_LABEL)[role] || role;
+const DISCUSS_STAGES = [
+  ['opinions', 'Nêu quan điểm'],
+  ['discuss', 'Trao đổi'],
+  ['minutes', 'Biên bản'],
+  ['done', 'Hoàn tất'],
+];
 const STAGES = [
   ['analyze', 'Phân tích'],
   ['critique', 'Phản biện'],
@@ -198,7 +210,7 @@ function agentStart(evt) {
       <div class="bubble">
         <div class="msg-head">
           <span class="name">${esc(a.label)}</span>
-          <span class="role"><span class="role-chip">${roleIco} <span>${ROLE_LABEL[evt.role] || evt.role}</span></span> · ${STEP_LABEL[evt.step] || evt.step}${round}</span>
+          <span class="role"><span class="role-chip">${roleIco} <span>${roleLabel(evt.role)}</span></span> · ${STEP_LABEL[evt.step] || evt.step}${round}</span>
           <span class="verdict"></span>
           <span class="time">${time(evt.ts)}</span>
         </div>
@@ -332,13 +344,27 @@ function resolveGate(evt) {
 }
 
 function addReport(evt) {
-  append(h(`<div class="card report">
+  const decision = evt.kind === 'decision';
+  const badge = decision
+    ? `<span class="badge ${evt.consensus ? 'good' : 'bad'}">${evt.consensus ? 'Đồng thuận' : 'Chưa đồng thuận hoàn toàn'}</span>`
+    : '';
+  const el = h(`<div class="card report">
     <div class="card-head">
       <span class="card-ico report-ico">${ICONS.checkCircle}</span>
-      <h4>Báo cáo hoàn tất task</h4>
+      <h4>${decision ? 'Biên bản quyết định' : 'Báo cáo hoàn tất task'}</h4>
+      ${badge}
     </div>
     <div class="content">${md(evt.text)}</div>
-  </div>`), { force: true });
+    ${decision ? '<div class="actions"><button class="btn primary" data-implement>Triển khai quyết định này</button></div>' : ''}
+  </div>`);
+  $('[data-implement]', el)?.addEventListener('click', () => {
+    openNewTask({
+      mode: 'code',
+      projectPath: current?.projectPath || '',
+      request: `Triển khai quyết định từ buổi thảo luận "${current?.title || ''}":\n\n${evt.text}`,
+    });
+  });
+  append(el, { force: true });
 }
 
 function applyEvent(evt) {
@@ -361,7 +387,7 @@ function applyEvent(evt) {
     case 'gate_resolved': resolveGate(evt); break;
     case 'report': addReport(evt); break;
     case 'followup':
-      append(h(`<div class="stage-div"><span class="stage-pill">${ICONS.repeat} <span>Yêu cầu tiếp theo #${evt.n}</span></span></div>`));
+      append(h(`<div class="stage-div"><span class="stage-pill">${ICONS.repeat} <span>${current?.mode === 'discuss' ? 'Câu hỏi' : 'Yêu cầu'} tiếp theo #${evt.n}</span></span></div>`));
       if (evt.text) addUser(evt); // older events carried the message here
       break;
   }
@@ -482,7 +508,9 @@ function renderTasks() {
   }
   list.innerHTML = tasks.map((t) => {
     const isActive = current?.id === t.id;
-    const folderName = esc(t.projectPath.split(/[\\/]/).pop());
+    const where = t.projectPath
+      ? `<span class="repo-text" title="${esc(t.projectPath)}">${ICONS.folder} ${esc(t.projectPath.split(/[\\/]/).pop())}</span>`
+      : '<span class="repo-text">Thảo luận</span>';
     return `
     <button class="task-item ${isActive ? 'active' : ''}" data-id="${esc(t.id)}">
       <div class="task-item-head">
@@ -493,7 +521,7 @@ function renderTasks() {
       <div class="s">
         <span class="status-text">${STATUS_LABEL[t.status] || t.status}</span>
         <span class="s-sep">·</span>
-        <span class="repo-text" title="${esc(t.projectPath)}">${ICONS.folder} ${folderName}</span>
+        ${where}
       </div>
     </button>`;
   }).join('');
@@ -550,7 +578,8 @@ function renderProgress() {
   const chip = $('#statusChip');
   chip.className = 'chip ' + (t?.status || '');
   chip.innerHTML = t ? `<span class="chip-dot"></span><span>${STATUS_LABEL[t.status] || t.status}</span>` : '—';
-  const stages = t?.useGit === false ? STAGES.filter(([k]) => k !== 'gate_merge') : STAGES;
+  const discuss = t?.mode === 'discuss';
+  const stages = discuss ? DISCUSS_STAGES : t?.useGit === false ? STAGES.filter(([k]) => k !== 'gate_merge') : STAGES;
   const idx = t ? stages.findIndex(([k]) => k === t.stage) : -1;
   $('#stages').innerHTML = stages.map(([k, label], i) => {
     const done = t && (t.status === 'done' || i < idx);
@@ -567,12 +596,15 @@ function renderProgress() {
   const auto = $('#autoToggle');
   auto.checked = Boolean(t?.autoMode);
   auto.disabled = !t;
-  $('#autoHint').textContent = auto.checked ? 'Đang bật: AI tự động chạy đến hết' : 'Đang tắt: chờ bạn duyệt trước khi code và merge';
+  $('#autoHint').textContent = discuss
+    ? (auto.checked ? 'Đang bật: hết số vòng thì tự chốt biên bản' : 'Đang tắt: hết số vòng thì hỏi bạn')
+    : (auto.checked ? 'Đang bật: AI tự động chạy đến hết' : 'Đang tắt: chờ bạn duyệt trước khi code và merge');
   $('#stopBtn').disabled = !isLive();
   $('#msgInput').disabled = $('#sendBtn').disabled = !t;
 
   $('#info').innerHTML = t ? [
-    ['Project', `<span class="info-val" title="${esc(t.projectPath)}">${esc(t.projectPath)}</span>`],
+    discuss && ['Loại', 'Thảo luận (không sửa file)'],
+    ['Project', t.projectPath ? `<span class="info-val" title="${esc(t.projectPath)}">${esc(t.projectPath)}</span>` : '<span class="muted">Không gắn project</span>'],
     t.useGit === false && ['Git', 'Không dùng (sửa trực tiếp trong thư mục)'],
     t.useGit !== false && t.branch && ['Branch', `<span class="branch-pill">${ICONS.branch} ${esc(t.branch)}</span> <span class="muted small">← ${esc(t.baseBranch)}</span>`],
     t.merged !== undefined && ['Merge', t.merged ? '<span class="text-ok">Đã merge (chưa push)</span>' : '<span class="muted">Chưa merge</span>'],
@@ -581,7 +613,7 @@ function renderProgress() {
 
   if (t) {
     $('#taskTitle').textContent = t.title;
-    $('#taskPath').innerHTML = `${ICONS.folder} <span>${esc(t.projectPath)}</span>`;
+    $('#taskPath').innerHTML = t.projectPath ? `${ICONS.folder} <span>${esc(t.projectPath)}</span>` : '<span>Thảo luận, không gắn project</span>';
     upsertTask(t);
   }
   tickElapsed();
@@ -772,15 +804,33 @@ $('#stopBtn').addEventListener('click', async () => {
 });
 
 const dialog = $('#newTaskDialog');
-$('#newTaskBtn').addEventListener('click', () => {
+// A discussion asks a question and may run without a project.
+function applyMode() {
+  const f = $('#newTaskForm');
+  const discuss = f.mode.value === 'discuss';
+  $('#requestLabel').textContent = discuss ? 'Câu hỏi cần thảo luận' : 'Yêu cầu công việc';
+  f.request.placeholder = discuss
+    ? 'Ví dụ: Nên dùng PostgreSQL hay MongoDB cho hệ thống ví điện tử? Tiêu chí: chi phí, độ an toàn giao dịch, khả năng mở rộng...'
+    : 'Ví dụ: Thêm chức năng đăng nhập bằng Google OAuth2 cho trang admin... (Ctrl+V hoặc kéo thả để đính kèm ảnh)';
+  $('#projectLabel').textContent = discuss ? 'Thư mục Project (tuỳ chọn, để AI đọc tham khảo)' : 'Thư mục Project (local)';
+  f.projectPath.required = !discuss;
+}
+
+function openNewTask({ mode = 'code', projectPath, request = '' } = {}) {
   const f = $('#newTaskForm');
   f.reset();
   newImages.set([]);
-  f.projectPath.value = store('ai-team.lastProject') || '';
+  f.mode.value = mode;
+  f.request.value = request;
+  f.projectPath.value = projectPath ?? (store('ai-team.lastProject') || '');
   f.autoMode.checked = Boolean(CONFIG?.autoModeDefault);
   $('#newTaskError').textContent = '';
+  applyMode();
   dialog.showModal();
-});
+}
+
+$('#newTaskBtn').addEventListener('click', () => openNewTask());
+$('#newTaskForm').querySelectorAll('[name=mode]').forEach((r) => r.addEventListener('change', applyMode));
 $('#cancelNew').addEventListener('click', () => dialog.close());
 $('#importTasks').addEventListener('click', async () => {
   const f = $('#newTaskForm');
@@ -801,10 +851,10 @@ $('#newTaskForm').addEventListener('submit', async (e) => {
   const f = e.target;
   try {
     const task = await api('/api/tasks', {
-      request: f.request.value, projectPath: f.projectPath.value, title: f.title.value, autoMode: f.autoMode.checked,
+      mode: f.mode.value, request: f.request.value, projectPath: f.projectPath.value, title: f.title.value, autoMode: f.autoMode.checked,
       images: newImages.images,
     });
-    store('ai-team.lastProject', f.projectPath.value);
+    if (f.projectPath.value.trim()) store('ai-team.lastProject', f.projectPath.value);
     dialog.close();
     upsertTask(task);
     openTask(task.id);
@@ -864,6 +914,13 @@ async function loadBranches() {
     setBranchMsg('');
     $('.bt-tools').hidden = true;
     $('#branchTree').innerHTML = '<div class="bt-empty">Chọn một task để xem branch.</div>';
+    return;
+  }
+  if (!current.projectPath) {
+    branchData = null;
+    setBranchMsg('');
+    $('.bt-tools').hidden = true;
+    $('#branchTree').innerHTML = '<div class="bt-empty">Task thảo luận này không gắn project nên không có branch.</div>';
     return;
   }
   try {
@@ -1143,6 +1200,7 @@ $('#settingsBtn').addEventListener('click', async () => {
     </div>`).join('');
   f.maxDebateRounds.value = settings.maxDebateRounds;
   f.maxFixRounds.value = settings.maxFixRounds;
+  f.maxDiscussRounds.value = settings.maxDiscussRounds;
   f.autoModeDefault.checked = settings.autoModeDefault;
   f.historyInGit.checked = settings.historyInGit;
   $('#settingsError').textContent = '';
@@ -1400,6 +1458,7 @@ $('#settingsForm').addEventListener('submit', async (e) => {
       agents,
       maxDebateRounds: f.maxDebateRounds.value,
       maxFixRounds: f.maxFixRounds.value,
+      maxDiscussRounds: f.maxDiscussRounds.value,
       autoModeDefault: f.autoModeDefault.checked,
       historyInGit: f.historyInGit.checked,
     });

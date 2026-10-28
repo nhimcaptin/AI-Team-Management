@@ -159,6 +159,90 @@ Use CHANGES only for issues that should block merging; put nice-to-haves as mino
   );
 }
 
+// ---------- discussion mode: the three AIs only debate and reach a decision ----------
+
+const PANEL_DESC = {
+  analyst: 'ANALYST. You look at the big picture: gather the facts, lay out the options and compare them.',
+  critic: "DEVIL'S ADVOCATE / RISK. You challenge assumptions, find what could go wrong, and refuse a weak consensus.",
+  coder: 'PRAGMATIST. You judge feasibility: effort, cost, technical complexity, and what it takes to actually do it.',
+};
+
+function panelHeader(ctx, role) {
+  const t = ctx.team;
+  return `You are ${t[role].label}, one of 3 AI advisors discussing a question in a group chat supervised by a human lead. The goal is a well-argued decision, not code.
+Panel: ${t.analyst.label} = Analyst, ${t.critic.label} = Devil's advocate / risk, ${t.coder.label} = Pragmatist / feasibility.
+Your perspective: ${PANEL_DESC[role]}
+${ctx.projectPath ? `A project is attached for reference: ${ctx.projectPath}. Read its files when they help (read only, do NOT modify, create or delete any file).` : 'No project is attached; reason from your own knowledge. Do NOT create or modify any file.'}
+Write your reply as a chat message, in ${LANGUAGES[ctx.language] || ctx.language}, using Markdown. Be concrete, give reasons and numbers where you can, no filler.`;
+}
+
+function earlierDecisions(ctx) {
+  if (!ctx.history.length) return '';
+  const parts = ctx.history.map((h, i) => `### Question #${i + 1}: ${h.request}\n` + (h.plan ? `Decision:\n${clip(h.plan, 6000)}` : 'No decision was recorded.'));
+  return section('Earlier discussion on this topic (the current question is a follow-up; build on it)', parts.join('\n\n'));
+}
+
+function transcript(ctx, turns) {
+  const lines = turns.map((x) => `### ${ctx.team[x.role].label} (${x.round === 1 ? 'opening opinion' : `exchange round ${x.round - 1}`})\n${clip(x.text, 5000)}`);
+  return section('Discussion so far', lines.join('\n\n'));
+}
+
+export function opinion(ctx, role) {
+  return (
+    panelHeader(ctx, role) +
+    `\n\nTask: round 1. Give your independent opinion on the question below, from your perspective. You have not seen the other advisors' answers yet.
+Your reply must contain:
+1. **Quan điểm**: your recommended answer, stated up front.
+2. **Lập luận**: the key reasons and evidence.
+3. **Phương án khác**: the alternatives you considered and why you rank them lower.
+4. **Rủi ro / điều chưa chắc**: what could make you wrong.` +
+    section('Question', ctx.request) +
+    earlierDecisions(ctx) +
+    userMessages(ctx)
+  );
+}
+
+export function discuss(ctx, role, { turns, round, maxRounds }) {
+  return (
+    panelHeader(ctx, role) +
+    `\n\nTask: discussion round ${round}/${maxRounds}. Read what the other advisors said and respond to them by name:
+- where you agree, and where you disagree and why
+- whether their arguments change your view (changing your mind on good evidence is a strength)
+- your current position, stated clearly
+Aim for a decision the panel can stand behind, but do not agree just to finish: AGREE only if you would sign the emerging decision.` +
+    section('Question', ctx.request) +
+    earlierDecisions(ctx) +
+    userMessages(ctx) +
+    transcript(ctx, turns) +
+    `\n\nEnd your reply with exactly one fenced JSON block (a program parses it):
+\`\`\`json
+{"verdict": "AGREE", "position": "one sentence: the decision you support", "issues": [{"severity": "major|minor", "text": "remaining concern"}]}
+\`\`\`
+"verdict" must be AGREE (you support the decision most of the panel is converging on) or DISAGREE (you do not, yet).`
+  );
+}
+
+export function minutes(ctx, { turns, consensus }) {
+  return (
+    panelHeader(ctx, 'analyst') +
+    `\n\nTask: the discussion is over${consensus ? ' and the panel reached consensus' : ' WITHOUT full consensus'}. Write the final decision record for the human lead, faithful to what was actually said (do not invent new arguments). Use exactly these sections:
+## Quyết định
+The decision in 1-3 sentences.${consensus ? '' : ' If there is no consensus, give the majority view and say clearly that it is not unanimous.'}
+## Lý do chính
+## Các phương án đã cân nhắc
+For each: short description, pros, cons, why it was or was not chosen.
+## Lập trường từng thành viên
+One line per advisor: agrees / has reservations, and why.
+## Rủi ro và câu hỏi còn mở
+## Bước tiếp theo đề xuất
+Concrete next actions. If the decision implies building something, describe it so it can be handed to a coding team as-is.` +
+    section('Question', ctx.request) +
+    earlierDecisions(ctx) +
+    userMessages(ctx) +
+    transcript(ctx, turns)
+  );
+}
+
 // Takes the last fenced json block (or bare object) that carries a "verdict".
 export function parseVerdict(text, allowed) {
   const candidates = [];

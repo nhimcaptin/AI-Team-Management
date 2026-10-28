@@ -9,6 +9,7 @@
   },
   "maxDebateRounds": 3,
   "maxFixRounds": 2,
+  "maxDiscussRounds": 3,
   "autoModeDefault": false,
   "historyInGit": false,
   "timeoutMinutes": {

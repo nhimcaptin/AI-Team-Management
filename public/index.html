@@ -181,11 +181,15 @@
       </div>
 
       <div class="dlg-body">
-        <label>Yêu cầu công việc
+        <div class="mode-pick" role="radiogroup" aria-label="Loại task">
+          <label><input type="radio" name="mode" value="code" checked> <span><strong>Code</strong><small>Phân tích, phản biện rồi viết code và review</small></span></label>
+          <label><input type="radio" name="mode" value="discuss"> <span><strong>Thảo luận</strong><small>3 AI chỉ bàn bạc và chốt quyết định, không sửa file</small></span></label>
+        </div>
+        <label><span id="requestLabel">Yêu cầu công việc</span>
           <textarea name="request" rows="5" required placeholder="Ví dụ: Thêm chức năng đăng nhập bằng Google OAuth2 cho trang admin... (Ctrl+V hoặc kéo thả để đính kèm ảnh)"></textarea>
           <div class="attach-strip" id="newAttach"></div>
         </label>
-        <label>Thư mục Project (local)
+        <label><span id="projectLabel">Thư mục Project (local)</span>
           <input name="projectPath" required placeholder="D:\projects\my-app">
         </label>
         <button type="button" class="btn import-btn" id="importTasks">Nhập task có sẵn trong project này (làm tiếp từ máy khác)</button>
@@ -234,6 +238,7 @@
         <div class="flow-grid">
           <label>Số vòng phản biện tối đa <input type="number" name="maxDebateRounds" min="1" max="10"></label>
           <label>Số lần sửa sau review tối đa <input type="number" name="maxFixRounds" min="0" max="10"></label>
+          <label>Số vòng trao đổi khi thảo luận <input type="number" name="maxDiscussRounds" min="1" max="10"></label>
           <label class="inline custom-check-label"><input type="checkbox" name="autoModeDefault" class="checkbox"> <span>Bật Auto mặc định cho task mới</span></label>
           <label class="inline custom-check-label"><input type="checkbox" name="historyInGit" class="checkbox"> <span>Commit lịch sử chat vào git sau mỗi lượt, để push và làm tiếp task trên máy khác</span></label>
         </div>

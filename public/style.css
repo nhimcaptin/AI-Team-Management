@@ -2138,6 +2138,62 @@ dialog label.inline {
   width: auto;
 }
 
+/* Task type picker in the new task dialog: two cards, the checked one highlighted */
+.mode-pick {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+dialog .mode-pick label {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel-2);
+  cursor: pointer;
+}
+
+dialog .mode-pick label:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.mode-pick input {
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.mode-pick span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mode-pick small {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 520px) {
+  .mode-pick { grid-template-columns: 1fr; }
+}
+
+.report .card-head .badge {
+  margin-left: auto;
+}
+
+.report .actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
 /* Custom Vector Checkbox (Fluent / Teams Style) */
 .custom-check-label {
   display: inline-flex;

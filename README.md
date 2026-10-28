@@ -61,6 +61,13 @@ Muốn thử giao diện mà chưa tốn quota thì chạy `npm run mock`. Ở c
 - Project không có git thì tab hiện "Vui lòng liên kết git".
 - Push chỉ xảy ra khi bạn chọn Push trong menu và xác nhận. Pipeline của AI không bao giờ tự push.
 
+**💬 Task Thảo luận** (chọn loại task khi bấm Task mới):
+- 3 AI chỉ bàn bạc, không sửa file, không tạo branch. Thư mục project là tuỳ chọn, có thì AI đọc để tham khảo.
+- Vòng 1: mỗi AI nêu quan điểm riêng, không thấy câu trả lời của nhau. Antigravity nhìn tổng quan, Claude phản biện rủi ro, Codex đánh giá tính khả thi.
+- Các vòng sau: mỗi AI đọc ý của hai AI kia rồi phản hồi và bỏ phiếu AGREE/DISAGREE. Cả 3 AGREE thì dừng; hết số vòng thì hỏi bạn (Auto bật thì tự chốt).
+- Cuối cùng Antigravity viết biên bản quyết định. Nút **Triển khai quyết định này** mở sẵn một task Code từ biên bản.
+- Nhắn tiếp sau khi xong thì mở câu hỏi mới, có kèm các quyết định trước.
+
 **⚙️ Cài đặt:**
 - Chọn AI cho từng role, model cho từng AI (để trống là dùng model mặc định của CLI).
 - Đổi tên, màu và ảnh avatar cho từng AI.

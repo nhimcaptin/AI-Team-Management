@@ -28,7 +28,7 @@ for (const t of store.list()) {
 }
 
 // Pick up tasks another machine committed into these projects' .ai-team/.
-for (const p of new Set(store.list().map((t) => t.projectPath))) store.importFrom(p);
+for (const p of new Set(store.list().map((t) => t.projectPath).filter(Boolean))) store.importFrom(p);
 
 class Hub {
   clients = new Set();
@@ -227,6 +227,7 @@ const routes = {
     roles: config.roles,
     maxDebateRounds: config.maxDebateRounds,
     maxFixRounds: config.maxFixRounds,
+    maxDiscussRounds: config.maxDiscussRounds ?? 3,
     autoModeDefault: config.autoModeDefault,
     historyInGit: Boolean(config.historyInGit),
     agents: Object.fromEntries(
@@ -251,6 +252,7 @@ const routes = {
     }
     local.maxDebateRounds = clampInt(body.maxDebateRounds, 1, 10, config.maxDebateRounds);
     local.maxFixRounds = clampInt(body.maxFixRounds, 0, 10, config.maxFixRounds);
+    local.maxDiscussRounds = clampInt(body.maxDiscussRounds, 1, 10, config.maxDiscussRounds ?? 3);
     local.autoModeDefault = Boolean(body.autoModeDefault);
     local.historyInGit = Boolean(body.historyInGit);
     local.agents ||= {};
@@ -401,17 +403,24 @@ const routes = {
   'POST /api/tasks': async (req) => {
     const body = await readBody(req, WITH_IMAGES_LIMIT);
     const request = String(body.request || '').trim();
-    let projectPath = path.resolve(String(body.projectPath || '').trim());
-    if (!request) throw Object.assign(new Error('Hãy nhập yêu cầu'), { status: 400 });
-    if (!body.projectPath || !fs.existsSync(projectPath) || !fs.statSync(projectPath).isDirectory()) {
-      throw Object.assign(new Error(`Không tìm thấy thư mục project: ${projectPath}`), { status: 400 });
+    const mode = body.mode === 'discuss' ? 'discuss' : 'code';
+    if (!request) throw Object.assign(new Error(mode === 'discuss' ? 'Hãy nhập câu hỏi cần thảo luận' : 'Hãy nhập yêu cầu'), { status: 400 });
+    // a discussion may run without a project
+    let projectPath = null;
+    if (mode === 'code' || String(body.projectPath || '').trim()) {
+      if (!String(body.projectPath || '').trim()) throw fail(400, 'Hãy nhập thư mục project');
+      projectPath = path.resolve(String(body.projectPath).trim());
+      if (!fs.existsSync(projectPath) || !fs.statSync(projectPath).isDirectory()) {
+        throw Object.assign(new Error(`Không tìm thấy thư mục project: ${projectPath}`), { status: 400 });
+      }
+      // Expand 8.3 short names (C:\Users\ABC~1\...): Codex's sandbox only allows writes under the long path.
+      projectPath = fs.realpathSync.native(projectPath);
     }
-    // Expand 8.3 short names (C:\Users\ABC~1\...): Codex's sandbox only allows writes under the long path.
-    projectPath = fs.realpathSync.native(projectPath);
     const title = String(body.title || '').trim() || request.split('\n')[0].slice(0, 60);
     const task = {
       id: newId(title),
       title,
+      mode,
       request,
       projectPath,
       createdAt: Date.now(),
@@ -446,7 +455,7 @@ const routes = {
     if (!msg && !pasted?.length) throw fail(400, 'Tin nhắn trống');
     const task = store.get(id);
     if (!task) throw fail(404, 'Không có task này');
-    if (!fs.existsSync(task.projectPath)) throw fail(409, `Không còn thấy thư mục project: ${task.projectPath}`);
+    if (task.projectPath && !fs.existsSync(task.projectPath)) throw fail(409, `Không còn thấy thư mục project: ${task.projectPath}`);
     const images = saveImages(task, pasted);
     const running = runners.get(id);
     if (running) {

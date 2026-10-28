@@ -34,6 +34,8 @@ export class Store {
   }
 
   taskDir(task) {
+    // a discussion with no project keeps its history in the tool's data folder
+    if (!task.projectPath) return path.join(this.dataDir, 'tasks', task.id);
     return path.join(task.projectPath, '.ai-team', task.id);
   }
 

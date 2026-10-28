@@ -13,6 +13,27 @@ function script({ role, step, round, message }) {
       activity: ['🔧 Read ai-team-mock.txt'],
     };
   }
+  // discussion: the critic holds out for one exchange round, then everyone agrees
+  if (step === 'opinion') {
+    const view = { analyst: 'Nên chọn phương án A vì chi phí thấp và dễ mở rộng.', critic: 'Phương án A có rủi ro khoá chặt nhà cung cấp, cần xem lại.', coder: 'Phương án A làm được trong khoảng 2 tuần với đội hiện tại.' };
+    return { text: `## Quan điểm\n${view[role]}\n\n## Lập luận\n- Lý do 1\n- Lý do 2\n\n## Phương án khác\nPhương án B: đắt hơn, chậm hơn.\n\n## Rủi ro\nChưa có số liệu thực tế.`, activity: [] };
+  }
+  if (step === 'discuss') {
+    const agree = role !== 'critic' || round > 1;
+    const text = agree
+      ? `Đồng ý chọn phương án A${role === 'critic' ? ', với điều kiện có kế hoạch thoát nhà cung cấp' : ''}.`
+      : 'Vẫn lo về rủi ro khoá chặt nhà cung cấp, chưa đồng ý.';
+    return {
+      text: `${text}\n\n\`\`\`json\n{"verdict": "${agree ? 'AGREE' : 'DISAGREE'}", "position": "Chọn phương án A", "issues": []}\n\`\`\``,
+      activity: [],
+    };
+  }
+  if (step === 'minutes') {
+    return {
+      text: `## Quyết định\nChọn phương án A.\n\n## Lý do chính\nChi phí thấp, làm nhanh.\n\n## Các phương án đã cân nhắc\n- A: rẻ, nhanh; rủi ro khoá nhà cung cấp.\n- B: linh hoạt hơn nhưng đắt.\n\n## Lập trường từng thành viên\n- Phân tích: đồng ý.\n- Phản biện: đồng ý, kèm điều kiện có kế hoạch thoát.\n- Khả thi: đồng ý.\n\n## Rủi ro và câu hỏi còn mở\nCần số liệu thực tế.\n\n## Bước tiếp theo đề xuất\nTriển khai phương án A kèm lớp trừu tượng cho nhà cung cấp.`,
+      activity: [],
+    };
+  }
   if (step === 'analyze') {
     return {
       text: `## Hiểu vấn đề

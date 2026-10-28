@@ -158,7 +158,8 @@ export class TaskRunner {
       agentCfg,
       mode,
       prompt,
-      cwd: this.task.projectPath,
+      // a discussion without a project runs in its own history folder
+      cwd: this.task.projectPath || this.store.taskDir(this.task),
       promptFile: base + '.prompt.md',
       outFile: base + '.last.txt',
       timeoutMs: minutes * 60_000,
@@ -245,6 +246,7 @@ export class TaskRunner {
   // requests and plans as context. A merged branch is not reused.
   async run({ followUp, images = [] } = {}) {
     const t = this.task;
+    if (t.mode === 'discuss') return this.runDiscussion({ followUp, images });
     if (followUp != null) {
       if (!(await this.triage(followUp, images))) return;
       const history = [
@@ -293,11 +295,100 @@ export class TaskRunner {
     await this.saveHistory();
   }
 
+  // Discussion task: the three AIs only debate, then one writes the decision.
+  // Nothing is written to the project and no branch is made. A message after
+  // it ends opens a new question with the earlier decisions as context.
+  async runDiscussion({ followUp, images = [] } = {}) {
+    const t = this.task;
+    if (followUp != null) {
+      this.emit('user_message', { text: followUp, images });
+      const history = [...(t.history || []), { request: t.request, images: t.requestImages, plan: t.lastPlan }];
+      this.setState({ history, request: followUp, requestImages: images, startedAt: Date.now(), finishedAt: null, error: null, stage: null, round: null });
+      this.emit('followup', { n: history.length + 1 });
+    } else {
+      this.setState({ startedAt: Date.now() });
+      this.emit('user_message', { text: t.request, images: t.requestImages });
+    }
+    this.setState({ status: 'running' });
+    const { analyst, critic, coder } = this.team;
+    this.system(
+      `Bắt đầu thảo luận. ${analyst.label} nhìn tổng quan, ${critic.label} phản biện rủi ro, ${coder.label} đánh giá tính khả thi. Không AI nào được sửa file.` +
+        (this.mock ? ' (chế độ mock)' : ''),
+    );
+    try {
+      const decision = await this.discussPhase();
+      this.setState({ lastPlan: decision });
+      this.stage('done', null, 'Hoàn tất');
+      this.setState({ status: 'done', finishedAt: Date.now() });
+    } catch (e) {
+      if (e instanceof StopError || this.stopped) {
+        this.system('Thảo luận đã dừng.', 'warn');
+        this.setState({ status: 'stopped', finishedAt: Date.now() });
+      } else {
+        this.system(`Lỗi: ${e.message}`, 'error');
+        this.setState({ status: 'error', error: e.message, finishedAt: Date.now() });
+      }
+    }
+    await this.saveHistory();
+  }
+
+  async discussPhase() {
+    const roles = ['analyst', 'critic', 'coder'];
+    const turns = [];
+    this.stage('opinions', 1, 'Mỗi AI nêu quan điểm riêng');
+    // round 1 uses one context for all three, so nobody anchors on another's answer
+    const first = this.ctx();
+    for (const role of roles) {
+      const r = await this.callAgent(role, 'opinion', P.opinion(first, role), 'read', { round: 1 });
+      turns.push({ role, round: 1, text: r.text });
+    }
+
+    let maxRounds = this.config.maxDiscussRounds ?? 3;
+    let consensus = false;
+    for (let n = 1; ; n++) {
+      this.stage('discuss', n, `Trao đổi vòng ${n}/${maxRounds}`);
+      const agree = [];
+      for (const role of roles) {
+        const r = await this.callAgent(role, 'discuss', P.discuss(this.ctx(), role, { turns, round: n, maxRounds }), 'read', {
+          round: n,
+          verdicts: ['AGREE', 'DISAGREE'],
+        });
+        turns.push({ role, round: n + 1, text: P.stripVerdict(r.text) });
+        agree.push(r.verdict?.verdict === 'AGREE');
+      }
+      if (agree.every(Boolean)) {
+        consensus = true;
+        this.system('Cả 3 AI đã đồng thuận.', 'success');
+        break;
+      }
+      if (n >= maxRounds) {
+        const g = await this.gate('discuss_deadlock', {
+          title: `Sau ${n} vòng trao đổi vẫn chưa đồng thuận hoàn toàn`,
+          body: 'Chốt biên bản theo ý kiến hiện tại (ghi rõ ai còn bảo lưu), cho trao đổi thêm, hoặc dừng. Góp ý của bạn sẽ được gửi cho cả 3 AI.',
+          options: [
+            { id: 'minutes', label: 'Chốt biên bản' },
+            { id: 'more', label: 'Trao đổi thêm 1 vòng' },
+            { id: 'stop', label: 'Dừng' },
+          ],
+          auto: true,
+        });
+        if (g.option === 'stop') throw new StopError();
+        if (g.option === 'minutes') break;
+        maxRounds++;
+      }
+    }
+
+    this.stage('minutes', null, `${this.team.analyst.label} viết biên bản quyết định`);
+    const m = await this.callAgent('analyst', 'minutes', P.minutes(this.ctx(), { turns, consensus }), 'read');
+    this.emit('report', { kind: 'decision', text: m.text, consensus });
+    return m.text;
+  }
+
   // With historyInGit on, the chat history is committed on the user's branch so a
   // push carries it to another machine, where the task can be continued.
   async saveHistory() {
     const { projectPath: cwd, branch, merged } = this.task;
-    if (!this.config.historyInGit) return;
+    if (!this.config.historyInGit || !cwd) return;
     try {
       if (!(await git.isRepo(cwd)) || !(await git.hasCommits(cwd))) return;
       const current = await git.currentBranch(cwd);
